@@ -3,7 +3,7 @@
 interface YT {
   Player: {
     new (
-      elementId: string,
+      elementId: string | HTMLDivElement,
       options: {
         height?: string | number;
         width?: string | number;

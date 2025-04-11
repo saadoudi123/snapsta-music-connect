@@ -1,50 +1,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { 
-  Search, 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward, 
-  Volume2, 
-  Shuffle, 
-  Repeat, 
-  ListMusic,
-  Download,
-  X,
-  ExternalLink,
-  Heart,
-  Share,
-  Plus
-} from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
+import { ListMusic } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  album: string;
-  duration: string;
-  thumbnail: string;
-  videoId?: string;
-}
+// Import our newly created components
+import YouTubeCore from './player/YouTubeCore';
+import SearchBar from './player/SearchBar';
+import PlayerDisplay from './player/PlayerDisplay';
+import ActionButtons from './player/ActionButtons';
+import DownloadDialog from './player/DownloadDialog';
+import SongList from './player/SongList';
+import EmptyQueueDisplay from './player/EmptyQueueDisplay';
+import { Song } from './player/types';
 
 const YouTubePlayer: React.FC = () => {
   const { t } = useTranslation();
@@ -63,7 +32,7 @@ const YouTubePlayer: React.FC = () => {
   const [isBackgroundPlay, setIsBackgroundPlay] = useState(false);
   
   const playerRef = useRef<YT.Player | null>(null);
-  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const progressTimerRef = useRef<number | null>(null);
   
   // Mock data for trending and recently played
   const trendingSongs: Song[] = [
@@ -80,52 +49,11 @@ const YouTubePlayer: React.FC = () => {
     { id: '8', title: 'Sweet Child O\' Mine', artist: 'Guns N\' Roses', album: 'Appetite for Destruction', duration: '5:56', thumbnail: 'https://i.pravatar.cc/300?img=8', videoId: 'dQw4w9WgXcQ' },
   ];
   
-  // Initialize YouTube API
-  useEffect(() => {
-    // Load YouTube IFrame API
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-    
-    // This function will be called when the API is ready
-    window.onYouTubeIframeAPIReady = () => {
-      if (playerContainerRef.current && window.YT) {
-        playerRef.current = new window.YT.Player(playerContainerRef.current, {
-          height: '0',
-          width: '0',
-          videoId: '',
-          playerVars: {
-            autoplay: 0,
-            controls: 0,
-            disablekb: 1,
-            enablejsapi: 1,
-            iv_load_policy: 3,
-            modestbranding: 1,
-            rel: 0,
-            showinfo: 0
-          },
-          events: {
-            onReady: onPlayerReady,
-            onStateChange: onPlayerStateChange,
-            onError: onPlayerError
-          }
-        });
-      }
-    };
-    
-    return () => {
-      // Cleanup
-      if (playerRef.current) {
-        playerRef.current.destroy();
-      }
-    };
-  }, []);
-  
   // Player event handlers
-  const onPlayerReady = (event: YT.PlayerEvent) => {
+  const onPlayerReady = (player: YT.Player) => {
     console.log('Player ready');
-    event.target.setVolume(volume);
+    playerRef.current = player;
+    player.setVolume(volume);
   };
   
   const onPlayerStateChange = (event: YT.PlayerStateEvent) => {
@@ -150,8 +78,6 @@ const YouTubePlayer: React.FC = () => {
   };
   
   // Progress timer
-  const progressTimerRef = useRef<number | null>(null);
-  
   const startProgressTimer = () => {
     if (progressTimerRef.current) {
       clearInterval(progressTimerRef.current);
@@ -398,184 +324,66 @@ const YouTubePlayer: React.FC = () => {
     }, 3000);
   };
   
+  useEffect(() => {
+    // Cleanup function to clear any timers
+    return () => {
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+      }
+    };
+  }, []);
+  
   return (
     <div className="h-full">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
         {/* Left section - Player and controls */}
         <div className="lg:col-span-2 flex flex-col">
           {/* Search bar */}
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder={t('music.search')}
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-              />
-            </div>
-            
-            {searchResults.length > 0 && (
-              <div className="mt-2 border rounded-md shadow-sm bg-background z-10 absolute w-[calc(100%-2rem)]">
-                <ScrollArea className="max-h-64">
-                  {searchResults.map((result) => (
-                    <div 
-                      key={result.id} 
-                      className="flex items-center p-2 hover:bg-accent cursor-pointer"
-                      onClick={() => {
-                        playSong(result);
-                        setSearchQuery('');
-                        setSearchResults([]);
-                      }}
-                    >
-                      <img src={result.thumbnail} alt={result.title} className="w-10 h-10 rounded mr-3" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{result.title}</p>
-                        <p className="text-sm text-muted-foreground">{result.artist}</p>
-                      </div>
-                      <span className="text-xs text-muted-foreground ml-2">{result.duration}</span>
-                    </div>
-                  ))}
-                </ScrollArea>
-              </div>
-            )}
-          </div>
+          <SearchBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            searchResults={searchResults}
+            handleSearch={handleSearch}
+            playSong={playSong}
+          />
           
           {/* Player section */}
-          <div className="flex-1 flex flex-col items-center justify-center p-6 border rounded-lg bg-accent/10">
-            {currentSong ? (
-              <>
-                <img 
-                  src={currentSong.thumbnail} 
-                  alt={currentSong.title} 
-                  className="w-48 h-48 rounded-lg shadow-lg mb-6 object-cover"
-                />
-                
-                <h2 className="text-xl font-bold mb-1">{currentSong.title}</h2>
-                <p className="text-muted-foreground mb-6">{currentSong.artist}</p>
-                
-                <div className="w-full max-w-lg mb-6">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
-                  </div>
-                  <Slider
-                    value={[progress]}
-                    min={0}
-                    max={100}
-                    step={0.1}
-                    onValueChange={handleProgressChange}
-                    className="w-full"
-                  />
-                </div>
-                
-                <div className="flex items-center space-x-4 mb-4">
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={toggleShuffle}
-                    className={isShuffleOn ? 'text-primary' : ''}
-                  >
-                    <Shuffle className="h-5 w-5" />
-                  </Button>
-                  
-                  <Button variant="ghost" size="icon" onClick={playPreviousSong}>
-                    <SkipBack className="h-6 w-6" />
-                  </Button>
-                  
-                  <Button 
-                    variant="default" 
-                    size="icon" 
-                    className="h-12 w-12 rounded-full"
-                    onClick={togglePlay}
-                  >
-                    {isPlaying ? (
-                      <Pause className="h-6 w-6" />
-                    ) : (
-                      <Play className="h-6 w-6" />
-                    )}
-                  </Button>
-                  
-                  <Button variant="ghost" size="icon" onClick={playNextSong}>
-                    <SkipForward className="h-6 w-6" />
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={toggleRepeat}
-                    className={repeatMode > 0 ? 'text-primary' : ''}
-                  >
-                    <Repeat className="h-5 w-5" />
-                    {repeatMode === 2 && <span className="absolute text-xs">1</span>}
-                  </Button>
-                </div>
-                
-                <div className="flex items-center space-x-2 w-full max-w-xs">
-                  <Volume2 className="h-4 w-4 text-muted-foreground" />
-                  <Slider
-                    value={[volume]}
-                    min={0}
-                    max={100}
-                    step={1}
-                    onValueChange={handleVolumeChange}
-                    className="w-full"
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="text-center">
-                <h2 className="text-xl font-bold mb-4">{t('music.selectSongToPlay')}</h2>
-                <p className="text-muted-foreground mb-6">{t('music.browseAndSelect')}</p>
-                <Button onClick={() => playSong(trendingSongs[0])}>
-                  <Play className="h-4 w-4 mr-2" />
-                  {t('music.playRandom')}
-                </Button>
-              </div>
-            )}
-          </div>
+          <PlayerDisplay
+            currentSong={currentSong}
+            isPlaying={isPlaying}
+            togglePlay={togglePlay}
+            playPreviousSong={playPreviousSong}
+            playNextSong={playNextSong}
+            isShuffleOn={isShuffleOn}
+            toggleShuffle={toggleShuffle}
+            repeatMode={repeatMode}
+            toggleRepeat={toggleRepeat}
+            volume={volume}
+            handleVolumeChange={handleVolumeChange}
+            progress={progress}
+            duration={duration}
+            currentTime={currentTime}
+            handleProgressChange={handleProgressChange}
+            formatTime={formatTime}
+            trendingSongs={trendingSongs}
+            playSong={playSong}
+          />
           
-          {/* YouTube player container - hidden */}
-          <div ref={playerContainerRef} className="hidden"></div>
+          {/* YouTube player - hidden */}
+          <YouTubeCore
+            onPlayerReady={onPlayerReady}
+            onPlayerStateChange={onPlayerStateChange}
+            onPlayerError={onPlayerError}
+          />
           
           {/* Action buttons */}
           {currentSong && (
-            <div className="mt-4 flex justify-between">
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm">
-                  <Heart className="h-4 w-4 mr-2" />
-                  {t('music.favorite')}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowDownloadDialog(true)}>
-                  <Download className="h-4 w-4 mr-2" />
-                  {t('music.download')}
-                </Button>
-              </div>
-              
-              <div className="flex space-x-2">
-                <Button 
-                  variant={isBackgroundPlay ? "default" : "outline"} 
-                  size="sm"
-                  onClick={toggleBackgroundPlay}
-                >
-                  {isBackgroundPlay ? t('music.backgroundOn') : t('music.backgroundOff')}
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Share className="h-4 w-4 mr-2" />
-                  {t('music.share')}
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <a 
-                    href={`https://www.youtube.com/watch?v=${currentSong.videoId}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    {t('music.viewOnYouTube')}
-                  </a>
-                </Button>
-              </div>
-            </div>
+            <ActionButtons
+              currentSong={currentSong}
+              isBackgroundPlay={isBackgroundPlay}
+              toggleBackgroundPlay={toggleBackgroundPlay}
+              setShowDownloadDialog={setShowDownloadDialog}
+            />
           )}
         </div>
         
@@ -596,103 +404,33 @@ const YouTubePlayer: React.FC = () => {
             </TabsList>
             
             <TabsContent value="trending" className="flex-1">
-              <ScrollArea className="h-96">
-                <div className="space-y-1">
-                  {trendingSongs.map((song) => (
-                    <div 
-                      key={song.id}
-                      className={`flex items-center p-2 rounded hover:bg-accent cursor-pointer ${currentSong?.id === song.id ? 'bg-accent' : ''}`}
-                      onClick={() => playSong(song)}
-                    >
-                      <img src={song.thumbnail} alt={song.title} className="w-10 h-10 rounded mr-3" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{song.title}</p>
-                        <p className="text-sm text-muted-foreground">{song.artist}</p>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-xs text-muted-foreground mr-2">{song.duration}</span>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToQueue(song);
-                          }}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+              <SongList
+                songs={trendingSongs}
+                currentSong={currentSong}
+                playSong={playSong}
+                addToQueue={addToQueue}
+              />
             </TabsContent>
             
             <TabsContent value="recent" className="flex-1">
-              <ScrollArea className="h-96">
-                <div className="space-y-1">
-                  {recentlyPlayed.map((song) => (
-                    <div 
-                      key={song.id}
-                      className={`flex items-center p-2 rounded hover:bg-accent cursor-pointer ${currentSong?.id === song.id ? 'bg-accent' : ''}`}
-                      onClick={() => playSong(song)}
-                    >
-                      <img src={song.thumbnail} alt={song.title} className="w-10 h-10 rounded mr-3" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{song.title}</p>
-                        <p className="text-sm text-muted-foreground">{song.artist}</p>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-xs text-muted-foreground mr-2">{song.duration}</span>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToQueue(song);
-                          }}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+              <SongList
+                songs={recentlyPlayed}
+                currentSong={currentSong}
+                playSong={playSong}
+                addToQueue={addToQueue}
+              />
             </TabsContent>
             
             <TabsContent value="queue" className="flex-1">
               {queue.length > 0 ? (
-                <ScrollArea className="h-96">
-                  <div className="space-y-1">
-                    {queue.map((song, index) => (
-                      <div 
-                        key={`queue-${song.id}-${index}`}
-                        className="flex items-center p-2 rounded hover:bg-accent"
-                      >
-                        <div className="w-6 flex justify-center mr-2">
-                          <span className="text-sm text-muted-foreground">{index + 1}</span>
-                        </div>
-                        <img src={song.thumbnail} alt={song.title} className="w-10 h-10 rounded mr-3" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{song.title}</p>
-                          <p className="text-sm text-muted-foreground">{song.artist}</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground">{song.duration}</span>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
+                <SongList
+                  songs={queue}
+                  currentSong={currentSong}
+                  playSong={playSong}
+                  isQueue={true}
+                />
               ) : (
-                <div className="h-96 flex flex-col items-center justify-center text-center p-4">
-                  <ListMusic className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">{t('music.queueEmpty')}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {t('music.addSongsToQueue')}
-                  </p>
-                </div>
+                <EmptyQueueDisplay />
               )}
             </TabsContent>
           </Tabs>
@@ -700,34 +438,12 @@ const YouTubePlayer: React.FC = () => {
       </div>
       
       {/* Download dialog */}
-      <Dialog open={showDownloadDialog} onOpenChange={setShowDownloadDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('music.download')}</DialogTitle>
-            <DialogDescription>
-              {currentSong && `${currentSong.title} - ${currentSong.artist}`}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4 space-y-4">
-            <Button className="w-full" onClick={() => handleDownload('mp3')}>
-              <Download className="h-4 w-4 mr-2" />
-              {t('music.downloadMP3')}
-            </Button>
-            
-            <Button className="w-full" variant="outline" onClick={() => handleDownload('mp4')}>
-              <Download className="h-4 w-4 mr-2" />
-              {t('music.downloadMP4')}
-            </Button>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDownloadDialog(false)}>
-              {t('common.cancel')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DownloadDialog
+        showDownloadDialog={showDownloadDialog}
+        setShowDownloadDialog={setShowDownloadDialog}
+        currentSong={currentSong}
+        handleDownload={handleDownload}
+      />
     </div>
   );
 };
