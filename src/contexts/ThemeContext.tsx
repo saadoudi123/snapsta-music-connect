@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import supabase from '@/lib/supabase';
-import { useAuth } from './AuthContext';
 
 type ThemeType = 'light' | 'dark' | 'comfort' | 'system';
 
@@ -17,9 +16,28 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<ThemeType>('system');
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark' | 'comfort'>('light');
-  const { user } = useAuth();
   const { i18n } = useTranslation();
-
+  const [userId, setUserId] = useState<string | null>(null);
+  
+  // Get the current user ID on mount
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data } = await supabase.auth.getSession();
+      setUserId(data.session?.user?.id || null);
+    };
+    
+    getCurrentUser();
+    
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUserId(session?.user?.id || null);
+      }
+    );
+    
+    return () => subscription.unsubscribe();
+  }, []);
+  
   // Helper function to determine and apply the correct theme
   const applyTheme = (newTheme: ThemeType) => {
     // Remove all theme classes
@@ -57,12 +75,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Fetch user's theme preference when user changes
   useEffect(() => {
     const fetchUserTheme = async () => {
-      if (user) {
+      if (userId) {
         try {
           const { data, error } = await supabase
             .from('profiles')
             .select('theme')
-            .eq('id', user.id)
+            .eq('id', userId)
             .single();
 
           if (error) {
@@ -83,7 +101,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     fetchUserTheme();
-  }, [user, i18n.language]);
+  }, [userId, i18n.language]);
 
   // Function to set the theme
   const setTheme = async (newTheme: ThemeType) => {
@@ -92,12 +110,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('theme', newTheme);
 
     // Update user's theme preference in the database if logged in
-    if (user) {
+    if (userId) {
       try {
         await supabase
           .from('profiles')
           .update({ theme: newTheme })
-          .eq('id', user.id);
+          .eq('id', userId);
       } catch (error) {
         console.error('Error updating user theme preference:', error);
       }

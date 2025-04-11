@@ -39,8 +39,8 @@ const App = () => {
         <Sonner />
         <Suspense fallback={<div>Loading...</div>}>
           <BrowserRouter>
-            <ThemeProvider>
-              <AuthProvider>
+            <AuthProvider>
+              <ThemeProvider>
                 <Routes>
                   {/* Auth Routes */}
                   <Route path="/auth" element={<AuthLayout />}>
@@ -59,8 +59,8 @@ const App = () => {
                   {/* 404 Route */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </AuthProvider>
-            </ThemeProvider>
+              </ThemeProvider>
+            </AuthProvider>
           </BrowserRouter>
         </Suspense>
       </TooltipProvider>
