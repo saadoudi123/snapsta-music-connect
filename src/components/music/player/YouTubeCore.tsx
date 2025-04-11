@@ -1,69 +1,142 @@
 
-import React, { useRef, useEffect } from 'react';
-import { toast } from '@/hooks/use-toast';
-import { useTranslation } from 'react-i18next';
+import React, { useEffect, useRef } from 'react';
+import { YouTubePlayerState } from '@/components/music/player/types';
 
 interface YouTubeCoreProps {
-  onPlayerReady: (player: YT.Player) => void;
-  onPlayerStateChange: (event: YT.PlayerStateEvent) => void;
-  onPlayerError: (event: YT.PlayerErrorEvent) => void;
+  videoId: string | null;
+  isPlaying: boolean;
+  volume: number;
+  onReady: () => void;
+  onStateChange: (state: YouTubePlayerState) => void;
+  onError: (error: number) => void;
+  onProgressChange: (currentTime: number, duration: number) => void;
 }
 
 const YouTubeCore: React.FC<YouTubeCoreProps> = ({
-  onPlayerReady,
-  onPlayerStateChange,
-  onPlayerError
+  videoId,
+  isPlaying,
+  volume,
+  onReady,
+  onStateChange,
+  onError,
+  onProgressChange,
 }) => {
-  const { t } = useTranslation();
-  const playerContainerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YT.Player | null>(null);
-  
-  // Initialize YouTube API
+  const playerElementRef = useRef<HTMLDivElement>(null);
+  const progressTimerRef = useRef<number | null>(null);
+
+  // Initialize YouTube player
   useEffect(() => {
-    // Load YouTube IFrame API
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    const firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-    
-    // This function will be called when the API is ready
-    window.onYouTubeIframeAPIReady = () => {
-      if (playerContainerRef.current && window.YT) {
-        playerRef.current = new window.YT.Player(playerContainerRef.current, {
-          height: '0',
-          width: '0',
-          videoId: '',
-          playerVars: {
-            autoplay: 0,
-            controls: 0,
-            disablekb: 1,
-            enablejsapi: 1,
-            iv_load_policy: 3,
-            modestbranding: 1,
-            rel: 0,
-            showinfo: 0
-          },
-          events: {
-            onReady: (event: YT.PlayerEvent) => {
-              console.log('Player ready');
-              onPlayerReady(event.target);
-            },
-            onStateChange: onPlayerStateChange,
-            onError: onPlayerError
-          }
-        });
-      }
-    };
-    
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+      window.onYouTubeIframeAPIReady = initPlayer;
+    } else {
+      initPlayer();
+    }
+
     return () => {
-      // Cleanup
-      if (playerRef.current) {
-        playerRef.current.destroy();
+      if (progressTimerRef.current) {
+        window.clearInterval(progressTimerRef.current);
       }
+      window.onYouTubeIframeAPIReady = null;
     };
-  }, [onPlayerReady, onPlayerStateChange, onPlayerError]);
-  
-  return <div ref={playerContainerRef} className="hidden"></div>;
+  }, []);
+
+  const initPlayer = () => {
+    if (!playerElementRef.current) return;
+
+    playerRef.current = new window.YT.Player(playerElementRef.current, {
+      height: '0',
+      width: '0',
+      playerVars: {
+        autoplay: 0,
+        controls: 0,
+        disablekb: 1,
+        enablejsapi: 1,
+        fs: 0,
+        modestbranding: 1,
+        playsinline: 1,
+        rel: 0,
+        showinfo: 0,
+        // iv_load_policy: 3, // Removing this line as it's causing TypeScript error
+      },
+      events: {
+        onReady: handleReady,
+        onStateChange: handleStateChange,
+        onError: handleError,
+      },
+    });
+  };
+
+  const handleReady = () => {
+    if (!playerRef.current) return;
+    
+    // Set initial volume
+    playerRef.current.setVolume(volume * 100);
+    
+    // Start progress tracking
+    progressTimerRef.current = window.setInterval(trackProgress, 1000);
+    
+    onReady();
+  };
+
+  const handleStateChange = (event: YT.OnStateChangeEvent) => {
+    const state = event.data as YouTubePlayerState;
+    onStateChange(state);
+  };
+
+  const handleError = (event: YT.OnErrorEvent) => {
+    onError(event.data);
+  };
+
+  const trackProgress = () => {
+    if (!playerRef.current) return;
+    
+    try {
+      const currentTime = playerRef.current.getCurrentTime();
+      const duration = playerRef.current.getDuration();
+      
+      if (currentTime && duration) {
+        onProgressChange(currentTime, duration);
+      }
+    } catch (error) {
+      console.error('Error tracking progress:', error);
+    }
+  };
+
+  // Handle video ID changes
+  useEffect(() => {
+    if (!playerRef.current || !videoId) return;
+    
+    playerRef.current.cueVideoById(videoId);
+    if (isPlaying) {
+      playerRef.current.playVideo();
+    }
+  }, [videoId]);
+
+  // Handle playing state changes
+  useEffect(() => {
+    if (!playerRef.current || !videoId) return;
+    
+    if (isPlaying) {
+      playerRef.current.playVideo();
+    } else {
+      playerRef.current.pauseVideo();
+    }
+  }, [isPlaying, videoId]);
+
+  // Handle volume changes
+  useEffect(() => {
+    if (!playerRef.current) return;
+    
+    playerRef.current.setVolume(volume * 100);
+  }, [volume]);
+
+  return <div ref={playerElementRef} id="youtube-player"></div>;
 };
 
 export default YouTubeCore;
