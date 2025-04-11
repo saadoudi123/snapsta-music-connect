@@ -22,6 +22,11 @@ import ForgotPasswordForm from "./components/auth/ForgotPasswordForm";
 // Main Pages
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Messages from "./pages/Messages";
+import Music from "./pages/Music";
+
+// Component for MusicPlayer
+import MusicPlayer from "./components/music/MusicPlayer";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +35,24 @@ const App = () => {
     // Initialize language direction based on current language
     document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = i18n.language;
+    
+    // Set language based on user's browser settings or geolocation
+    const setLanguageFromBrowser = () => {
+      const browserLang = navigator.language.split('-')[0];
+      if (['en', 'ar', 'ru'].includes(browserLang)) {
+        i18n.changeLanguage(browserLang);
+      }
+    };
+    
+    // Try to set language from browser
+    setLanguageFromBrowser();
+    
+    // Listen for language changes
+    window.addEventListener('languagechange', setLanguageFromBrowser);
+    
+    return () => {
+      window.removeEventListener('languagechange', setLanguageFromBrowser);
+    };
   }, []);
 
   return (
@@ -53,12 +76,17 @@ const App = () => {
                   {/* Main Routes */}
                   <Route path="/" element={<MainLayout />}>
                     <Route index element={<Index />} />
+                    <Route path="messages" element={<Messages />} />
+                    <Route path="music" element={<Music />} />
                     {/* Add other routes here */}
                   </Route>
 
                   {/* 404 Route */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                
+                {/* Music Player (Global component) */}
+                <MusicPlayer />
               </ThemeProvider>
             </AuthProvider>
           </BrowserRouter>

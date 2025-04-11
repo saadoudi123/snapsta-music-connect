@@ -1,0 +1,735 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { 
+  Search, 
+  Play, 
+  Pause, 
+  SkipBack, 
+  SkipForward, 
+  Volume2, 
+  Shuffle, 
+  Repeat, 
+  ListMusic,
+  Download,
+  X,
+  ExternalLink,
+  Heart,
+  Share,
+  Plus
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { toast } from '@/hooks/use-toast';
+
+interface Song {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  duration: string;
+  thumbnail: string;
+  videoId?: string;
+}
+
+const YouTubePlayer: React.FC = () => {
+  const { t } = useTranslation();
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [queue, setQueue] = useState<Song[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Song[]>([]);
+  const [volume, setVolume] = useState(80);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isShuffleOn, setIsShuffleOn] = useState(false);
+  const [repeatMode, setRepeatMode] = useState(0); // 0: off, 1: repeat all, 2: repeat one
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [isBackgroundPlay, setIsBackgroundPlay] = useState(false);
+  
+  const playerRef = useRef<YT.Player | null>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Mock data for trending and recently played
+  const trendingSongs: Song[] = [
+    { id: '1', title: 'Lose Yourself', artist: 'Eminem', album: '8 Mile Soundtrack', duration: '5:26', thumbnail: 'https://i.pravatar.cc/300?img=1', videoId: 'dQw4w9WgXcQ' },
+    { id: '2', title: 'Shape of You', artist: 'Ed Sheeran', album: '÷ (Divide)', duration: '3:54', thumbnail: 'https://i.pravatar.cc/300?img=2', videoId: 'dQw4w9WgXcQ' },
+    { id: '3', title: 'Blinding Lights', artist: 'The Weeknd', album: 'After Hours', duration: '3:20', thumbnail: 'https://i.pravatar.cc/300?img=3', videoId: 'dQw4w9WgXcQ' },
+    { id: '4', title: 'Uptown Funk', artist: 'Mark Ronson ft. Bruno Mars', album: 'Uptown Special', duration: '4:30', thumbnail: 'https://i.pravatar.cc/300?img=4', videoId: 'dQw4w9WgXcQ' },
+    { id: '5', title: 'Bad Guy', artist: 'Billie Eilish', album: 'When We All Fall Asleep, Where Do We Go?', duration: '3:14', thumbnail: 'https://i.pravatar.cc/300?img=5', videoId: 'dQw4w9WgXcQ' },
+  ];
+  
+  const recentlyPlayed: Song[] = [
+    { id: '6', title: 'Bohemian Rhapsody', artist: 'Queen', album: 'A Night at the Opera', duration: '5:55', thumbnail: 'https://i.pravatar.cc/300?img=6', videoId: 'dQw4w9WgXcQ' },
+    { id: '7', title: 'Hotel California', artist: 'Eagles', album: 'Hotel California', duration: '6:30', thumbnail: 'https://i.pravatar.cc/300?img=7', videoId: 'dQw4w9WgXcQ' },
+    { id: '8', title: 'Sweet Child O\' Mine', artist: 'Guns N\' Roses', album: 'Appetite for Destruction', duration: '5:56', thumbnail: 'https://i.pravatar.cc/300?img=8', videoId: 'dQw4w9WgXcQ' },
+  ];
+  
+  // Initialize YouTube API
+  useEffect(() => {
+    // Load YouTube IFrame API
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    
+    // This function will be called when the API is ready
+    window.onYouTubeIframeAPIReady = () => {
+      if (playerContainerRef.current) {
+        playerRef.current = new YT.Player(playerContainerRef.current, {
+          height: '0',
+          width: '0',
+          videoId: '',
+          playerVars: {
+            autoplay: 0,
+            controls: 0,
+            disablekb: 1,
+            enablejsapi: 1,
+            iv_load_policy: 3,
+            modestbranding: 1,
+            rel: 0,
+            showinfo: 0
+          },
+          events: {
+            onReady: onPlayerReady,
+            onStateChange: onPlayerStateChange,
+            onError: onPlayerError
+          }
+        });
+      }
+    };
+    
+    return () => {
+      // Cleanup
+      if (playerRef.current) {
+        playerRef.current.destroy();
+      }
+    };
+  }, []);
+  
+  // Player event handlers
+  const onPlayerReady = (event: YT.PlayerEvent) => {
+    console.log('Player ready');
+    event.target.setVolume(volume);
+  };
+  
+  const onPlayerStateChange = (event: YT.OnStateChangeEvent) => {
+    if (event.data === YT.PlayerState.PLAYING) {
+      setIsPlaying(true);
+      startProgressTimer();
+    } else if (event.data === YT.PlayerState.PAUSED) {
+      setIsPlaying(false);
+      stopProgressTimer();
+    } else if (event.data === YT.PlayerState.ENDED) {
+      handleSongEnd();
+    }
+  };
+  
+  const onPlayerError = (event: YT.OnErrorEvent) => {
+    console.error('Player error:', event.data);
+    toast({
+      title: t('errors.mediaPlaybackError'),
+      description: t('errors.tryAgain'),
+      variant: 'destructive'
+    });
+  };
+  
+  // Progress timer
+  const progressTimerRef = useRef<number | null>(null);
+  
+  const startProgressTimer = () => {
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current);
+    }
+    
+    progressTimerRef.current = window.setInterval(() => {
+      if (playerRef.current) {
+        const currentTime = playerRef.current.getCurrentTime();
+        const duration = playerRef.current.getDuration();
+        setCurrentTime(currentTime);
+        setDuration(duration);
+        setProgress((currentTime / duration) * 100);
+      }
+    }, 1000);
+  };
+  
+  const stopProgressTimer = () => {
+    if (progressTimerRef.current) {
+      clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
+  };
+  
+  // Handle song end
+  const handleSongEnd = () => {
+    if (repeatMode === 2) {
+      // Repeat current song
+      if (playerRef.current && currentSong) {
+        playerRef.current.seekTo(0);
+        playerRef.current.playVideo();
+      }
+    } else if (queue.length > 0) {
+      // Play next song
+      playNextSong();
+    } else if (repeatMode === 1) {
+      // Repeat all - go back to first trending song
+      playSong(trendingSongs[0]);
+    } else {
+      // Stop playing
+      setIsPlaying(false);
+    }
+  };
+  
+  // Format time (seconds to MM:SS)
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds)) return '0:00';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+  
+  // Play song
+  const playSong = (song: Song) => {
+    if (!playerRef.current || !song.videoId) return;
+    
+    setCurrentSong(song);
+    playerRef.current.loadVideoById(song.videoId);
+    playerRef.current.playVideo();
+    setIsPlaying(true);
+    
+    // Update document title and show notification if background play is enabled
+    if (isBackgroundPlay) {
+      document.title = `${song.title} - ${song.artist}`;
+      
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(t('music.nowPlaying'), {
+          body: `${song.title} - ${song.artist}`,
+          icon: song.thumbnail
+        });
+      }
+    }
+  };
+  
+  // Toggle play/pause
+  const togglePlay = () => {
+    if (!playerRef.current) return;
+    
+    if (isPlaying) {
+      playerRef.current.pauseVideo();
+      setIsPlaying(false);
+    } else {
+      if (currentSong) {
+        playerRef.current.playVideo();
+        setIsPlaying(true);
+      } else if (trendingSongs.length > 0) {
+        playSong(trendingSongs[0]);
+      }
+    }
+  };
+  
+  // Play next song
+  const playNextSong = () => {
+    if (queue.length > 0) {
+      // Play from queue
+      const nextSong = queue[0];
+      const newQueue = queue.slice(1);
+      setQueue(newQueue);
+      playSong(nextSong);
+    } else if (currentSong) {
+      // Find current song in trending list and play next
+      const currentIndex = trendingSongs.findIndex(song => song.id === currentSong.id);
+      if (currentIndex !== -1 && currentIndex < trendingSongs.length - 1) {
+        playSong(trendingSongs[currentIndex + 1]);
+      } else if (isShuffleOn) {
+        // Play random song
+        const randomIndex = Math.floor(Math.random() * trendingSongs.length);
+        playSong(trendingSongs[randomIndex]);
+      } else if (repeatMode === 1 && currentIndex === trendingSongs.length - 1) {
+        // Repeat all - go back to first song
+        playSong(trendingSongs[0]);
+      }
+    } else if (trendingSongs.length > 0) {
+      // No current song, start playing first trending
+      playSong(trendingSongs[0]);
+    }
+  };
+  
+  // Play previous song
+  const playPreviousSong = () => {
+    if (!currentSong) return;
+    
+    // If current time > 3 seconds, restart song
+    if (playerRef.current && playerRef.current.getCurrentTime() > 3) {
+      playerRef.current.seekTo(0);
+      return;
+    }
+    
+    // Find current song in trending list and play previous
+    const currentIndex = trendingSongs.findIndex(song => song.id === currentSong.id);
+    if (currentIndex > 0) {
+      playSong(trendingSongs[currentIndex - 1]);
+    } else if (isShuffleOn) {
+      // Play random song
+      const randomIndex = Math.floor(Math.random() * trendingSongs.length);
+      playSong(trendingSongs[randomIndex]);
+    } else if (repeatMode === 1 && currentIndex === 0) {
+      // Repeat all - go to last song
+      playSong(trendingSongs[trendingSongs.length - 1]);
+    }
+  };
+  
+  // Handle volume change
+  const handleVolumeChange = (value: number[]) => {
+    const newVolume = value[0];
+    setVolume(newVolume);
+    if (playerRef.current) {
+      playerRef.current.setVolume(newVolume);
+    }
+  };
+  
+  // Handle progress change (seek)
+  const handleProgressChange = (value: number[]) => {
+    const newProgress = value[0];
+    if (playerRef.current && duration) {
+      const seekTime = (newProgress / 100) * duration;
+      playerRef.current.seekTo(seekTime, true);
+      setProgress(newProgress);
+      setCurrentTime(seekTime);
+    }
+  };
+  
+  // Handle search
+  const handleSearch = (q: string) => {
+    setSearchQuery(q);
+    
+    if (!q.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    // Mock search results
+    const results = [...trendingSongs, ...recentlyPlayed]
+      .filter(song => 
+        song.title.toLowerCase().includes(q.toLowerCase()) ||
+        song.artist.toLowerCase().includes(q.toLowerCase())
+      )
+      .slice(0, 5);
+    
+    setSearchResults(results);
+  };
+  
+  // Toggle shuffle
+  const toggleShuffle = () => {
+    setIsShuffleOn(!isShuffleOn);
+  };
+  
+  // Toggle repeat mode
+  const toggleRepeat = () => {
+    setRepeatMode((prevMode) => (prevMode + 1) % 3);
+  };
+  
+  // Add to queue
+  const addToQueue = (song: Song) => {
+    setQueue([...queue, song]);
+    
+    toast({
+      title: t('music.addedToQueue'),
+      description: `${song.title} - ${song.artist}`,
+    });
+  };
+  
+  // Toggle background play
+  const toggleBackgroundPlay = () => {
+    setIsBackgroundPlay(!isBackgroundPlay);
+    
+    if (!isBackgroundPlay) {
+      // Request notification permission for background play alerts
+      if ('Notification' in window && Notification.permission !== 'granted') {
+        Notification.requestPermission();
+      }
+      
+      toast({
+        title: t('music.backgroundPlayEnabled'),
+        description: t('music.playingInBackground'),
+      });
+    } else {
+      document.title = 'Snapsta'; // Reset title
+      
+      toast({
+        title: t('music.backgroundPlayDisabled'),
+      });
+    }
+  };
+  
+  // Handle download
+  const handleDownload = (format: 'mp3' | 'mp4') => {
+    if (!currentSong) return;
+    
+    // In a real app, this would call a backend service to handle the download
+    // For now, we'll just show a toast
+    toast({
+      title: t('music.downloadStarted'),
+      description: `${currentSong.title} - ${currentSong.artist} (${format.toUpperCase()})`,
+    });
+    
+    setShowDownloadDialog(false);
+    
+    // Simulate download completion
+    setTimeout(() => {
+      toast({
+        title: t('music.downloadComplete'),
+        description: `${currentSong.title} - ${currentSong.artist}`,
+      });
+    }, 3000);
+  };
+  
+  return (
+    <div className="h-full">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+        {/* Left section - Player and controls */}
+        <div className="lg:col-span-2 flex flex-col">
+          {/* Search bar */}
+          <div className="mb-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder={t('music.search')}
+                className="pl-9"
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+              />
+            </div>
+            
+            {searchResults.length > 0 && (
+              <div className="mt-2 border rounded-md shadow-sm bg-background z-10 absolute w-[calc(100%-2rem)]">
+                <ScrollArea className="max-h-64">
+                  {searchResults.map((result) => (
+                    <div 
+                      key={result.id} 
+                      className="flex items-center p-2 hover:bg-accent cursor-pointer"
+                      onClick={() => {
+                        playSong(result);
+                        setSearchQuery('');
+                        setSearchResults([]);
+                      }}
+                    >
+                      <img src={result.thumbnail} alt={result.title} className="w-10 h-10 rounded mr-3" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{result.title}</p>
+                        <p className="text-sm text-muted-foreground">{result.artist}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground ml-2">{result.duration}</span>
+                    </div>
+                  ))}
+                </ScrollArea>
+              </div>
+            )}
+          </div>
+          
+          {/* Player section */}
+          <div className="flex-1 flex flex-col items-center justify-center p-6 border rounded-lg bg-accent/10">
+            {currentSong ? (
+              <>
+                <img 
+                  src={currentSong.thumbnail} 
+                  alt={currentSong.title} 
+                  className="w-48 h-48 rounded-lg shadow-lg mb-6 object-cover"
+                />
+                
+                <h2 className="text-xl font-bold mb-1">{currentSong.title}</h2>
+                <p className="text-muted-foreground mb-6">{currentSong.artist}</p>
+                
+                <div className="w-full max-w-lg mb-6">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                  <Slider
+                    value={[progress]}
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    onValueChange={handleProgressChange}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-4 mb-4">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={toggleShuffle}
+                    className={isShuffleOn ? 'text-primary' : ''}
+                  >
+                    <Shuffle className="h-5 w-5" />
+                  </Button>
+                  
+                  <Button variant="ghost" size="icon" onClick={playPreviousSong}>
+                    <SkipBack className="h-6 w-6" />
+                  </Button>
+                  
+                  <Button 
+                    variant="default" 
+                    size="icon" 
+                    className="h-12 w-12 rounded-full"
+                    onClick={togglePlay}
+                  >
+                    {isPlaying ? (
+                      <Pause className="h-6 w-6" />
+                    ) : (
+                      <Play className="h-6 w-6" />
+                    )}
+                  </Button>
+                  
+                  <Button variant="ghost" size="icon" onClick={playNextSong}>
+                    <SkipForward className="h-6 w-6" />
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={toggleRepeat}
+                    className={repeatMode > 0 ? 'text-primary' : ''}
+                  >
+                    <Repeat className="h-5 w-5" />
+                    {repeatMode === 2 && <span className="absolute text-xs">1</span>}
+                  </Button>
+                </div>
+                
+                <div className="flex items-center space-x-2 w-full max-w-xs">
+                  <Volume2 className="h-4 w-4 text-muted-foreground" />
+                  <Slider
+                    value={[volume]}
+                    min={0}
+                    max={100}
+                    step={1}
+                    onValueChange={handleVolumeChange}
+                    className="w-full"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="text-center">
+                <h2 className="text-xl font-bold mb-4">{t('music.selectSongToPlay')}</h2>
+                <p className="text-muted-foreground mb-6">{t('music.browseAndSelect')}</p>
+                <Button onClick={() => playSong(trendingSongs[0])}>
+                  <Play className="h-4 w-4 mr-2" />
+                  {t('music.playRandom')}
+                </Button>
+              </div>
+            )}
+          </div>
+          
+          {/* YouTube player container - hidden */}
+          <div ref={playerContainerRef} className="hidden"></div>
+          
+          {/* Action buttons */}
+          {currentSong && (
+            <div className="mt-4 flex justify-between">
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm">
+                  <Heart className="h-4 w-4 mr-2" />
+                  {t('music.favorite')}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowDownloadDialog(true)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  {t('music.download')}
+                </Button>
+              </div>
+              
+              <div className="flex space-x-2">
+                <Button 
+                  variant={isBackgroundPlay ? "default" : "outline"} 
+                  size="sm"
+                  onClick={toggleBackgroundPlay}
+                >
+                  {isBackgroundPlay ? t('music.backgroundOn') : t('music.backgroundOff')}
+                </Button>
+                <Button variant="outline" size="sm">
+                  <Share className="h-4 w-4 mr-2" />
+                  {t('music.share')}
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a 
+                    href={`https://www.youtube.com/watch?v=${currentSong.videoId}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    {t('music.viewOnYouTube')}
+                  </a>
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Right section - Trending, Recent, Queue */}
+        <div className="lg:col-span-1 flex flex-col">
+          <Tabs defaultValue="trending">
+            <TabsList className="w-full mb-4">
+              <TabsTrigger value="trending" className="flex-1">
+                {t('music.trending')}
+              </TabsTrigger>
+              <TabsTrigger value="recent" className="flex-1">
+                {t('music.recentlyPlayed')}
+              </TabsTrigger>
+              <TabsTrigger value="queue" className="flex-1">
+                <ListMusic className="h-4 w-4 mr-2" />
+                {t('music.queue')}
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="trending" className="flex-1">
+              <ScrollArea className="h-96">
+                <div className="space-y-1">
+                  {trendingSongs.map((song) => (
+                    <div 
+                      key={song.id}
+                      className={`flex items-center p-2 rounded hover:bg-accent cursor-pointer ${currentSong?.id === song.id ? 'bg-accent' : ''}`}
+                      onClick={() => playSong(song)}
+                    >
+                      <img src={song.thumbnail} alt={song.title} className="w-10 h-10 rounded mr-3" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{song.title}</p>
+                        <p className="text-sm text-muted-foreground">{song.artist}</p>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-xs text-muted-foreground mr-2">{song.duration}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToQueue(song);
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            
+            <TabsContent value="recent" className="flex-1">
+              <ScrollArea className="h-96">
+                <div className="space-y-1">
+                  {recentlyPlayed.map((song) => (
+                    <div 
+                      key={song.id}
+                      className={`flex items-center p-2 rounded hover:bg-accent cursor-pointer ${currentSong?.id === song.id ? 'bg-accent' : ''}`}
+                      onClick={() => playSong(song)}
+                    >
+                      <img src={song.thumbnail} alt={song.title} className="w-10 h-10 rounded mr-3" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{song.title}</p>
+                        <p className="text-sm text-muted-foreground">{song.artist}</p>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-xs text-muted-foreground mr-2">{song.duration}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToQueue(song);
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            
+            <TabsContent value="queue" className="flex-1">
+              {queue.length > 0 ? (
+                <ScrollArea className="h-96">
+                  <div className="space-y-1">
+                    {queue.map((song, index) => (
+                      <div 
+                        key={`queue-${song.id}-${index}`}
+                        className="flex items-center p-2 rounded hover:bg-accent"
+                      >
+                        <div className="w-6 flex justify-center mr-2">
+                          <span className="text-sm text-muted-foreground">{index + 1}</span>
+                        </div>
+                        <img src={song.thumbnail} alt={song.title} className="w-10 h-10 rounded mr-3" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{song.title}</p>
+                          <p className="text-sm text-muted-foreground">{song.artist}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{song.duration}</span>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              ) : (
+                <div className="h-96 flex flex-col items-center justify-center text-center p-4">
+                  <ListMusic className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">{t('music.queueEmpty')}</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {t('music.addSongsToQueue')}
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+      
+      {/* Download dialog */}
+      <Dialog open={showDownloadDialog} onOpenChange={setShowDownloadDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('music.download')}</DialogTitle>
+            <DialogDescription>
+              {currentSong && `${currentSong.title} - ${currentSong.artist}`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-4">
+            <Button className="w-full" onClick={() => handleDownload('mp3')}>
+              <Download className="h-4 w-4 mr-2" />
+              {t('music.downloadMP3')}
+            </Button>
+            
+            <Button className="w-full" variant="outline" onClick={() => handleDownload('mp4')}>
+              <Download className="h-4 w-4 mr-2" />
+              {t('music.downloadMP4')}
+            </Button>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDownloadDialog(false)}>
+              {t('common.cancel')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default YouTubePlayer;
