@@ -192,9 +192,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const isEmail = phoneOrEmail.includes('@');
       
-      const { error } = await supabase.auth.signInWithOtp({
-        [isEmail ? 'email' : 'phone']: phoneOrEmail,
-      });
+      let signInParams;
+      if (isEmail) {
+        signInParams = { email: phoneOrEmail };
+      } else {
+        signInParams = { phone: phoneOrEmail };
+      }
+      
+      const { error } = await supabase.auth.signInWithOtp(signInParams);
 
       if (error) {
         toast({
@@ -224,11 +229,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const isEmail = phoneOrEmail.includes('@');
       
-      const { error } = await supabase.auth.verifyOtp({
-        [isEmail ? 'email' : 'phone']: phoneOrEmail,
-        token,
-        type: 'sms',
-      });
+      let verifyParams;
+      if (isEmail) {
+        verifyParams = { 
+          email: phoneOrEmail,
+          token,
+          type: 'magiclink' as const
+        };
+      } else {
+        verifyParams = { 
+          phone: phoneOrEmail,
+          token,
+          type: 'sms' as const
+        };
+      }
+      
+      const { error } = await supabase.auth.verifyOtp(verifyParams);
 
       if (error) {
         toast({
