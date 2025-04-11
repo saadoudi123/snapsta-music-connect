@@ -1,322 +1,354 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Heart, MessageCircle, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { X, ChevronLeft, ChevronRight, Heart, Send, MessageCircle, Pause, Play } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Progress } from '@/components/ui/progress';
-import { toast } from '@/hooks/use-toast';
-import supabase from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface StoryReaction {
-  id: string;
-  storyId: string;
-  userId: string;
-  type: 'like' | 'love' | 'wow' | 'sad' | 'angry';
-  createdAt: string;
-}
-
-interface StoryView {
-  id: string;
-  storyId: string;
-  userId: string;
-  viewedAt: string;
-}
-
-interface StoryReply {
-  id: string;
-  storyId: string;
-  userId: string;
-  message: string;
-  createdAt: string;
-}
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Story {
   id: string;
-  userId: string;
+  user_id: string;
+  media_url: string;
+  caption?: string;
+  created_at: string;
+  expires_at: string;
+  view_count: number;
+  viewers: string[];
+  reactions: { [key: string]: number };
+}
+
+interface User {
+  id: string;
   username: string;
-  userAvatar: string;
-  content: string;
-  mediaUrl?: string;
-  mediaType?: 'image' | 'video';
-  backgroundStyle?: string;
-  createdAt: string;
-  expiresAt: string;
-  viewCount: number;
-  reactions: StoryReaction[];
-  replies: StoryReply[];
-  hasViewed: boolean;
+  avatar_url?: string;
 }
 
 interface StoryViewerProps {
-  stories: Story[];
-  currentIndex: number;
+  users: User[];
+  stories: Record<string, Story[]>;
+  initialUserIndex: number;
   onClose: () => void;
-  onPrev: () => void;
-  onNext: () => void;
 }
 
 const StoryViewer: React.FC<StoryViewerProps> = ({
+  users,
   stories,
-  currentIndex,
-  onClose,
-  onPrev,
-  onNext
+  initialUserIndex,
+  onClose
 }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const [progress, setProgress] = useState(0);
-  const [replyInput, setReplyInput] = useState('');
-  const [showReplyInput, setShowReplyInput] = useState(false);
-  const [reactionType, setReactionType] = useState<string | null>(null);
-
-  const currentStory = stories[currentIndex];
+  const { user: currentUser } = useAuth();
+  const isMobile = useIsMobile();
   
+  const [currentUserIndex, setCurrentUserIndex] = useState(initialUserIndex);
+  const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [replyText, setReplyText] = useState('');
+  const [showViewers, setShowViewers] = useState(false);
+  
+  const progressIntervalRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const activeUsers = users.filter(user => stories[user.id]?.length > 0);
+  const currentUser = activeUsers[currentUserIndex];
+  const userStories = currentUser ? stories[currentUser.id] || [] : [];
+  const currentStory = userStories[currentStoryIndex];
+  const isOwnStory = currentUser?.id === currentUser?.id;
+  
+  // Initialize story progress timer
   useEffect(() => {
-    if (!currentStory || !user) return;
-    
-    // Record view in database
-    const recordView = async () => {
-      if (currentStory.hasViewed) return;
-      
-      const { error } = await supabase
-        .from('story_views')
-        .insert({
-          story_id: currentStory.id,
-          user_id: user.id,
-          viewed_at: new Date().toISOString()
-        });
-      
-      if (error) {
-        console.error('Error recording story view:', error);
-      }
-    };
-    
-    recordView();
-    
-    // Progress animation
-    setProgress(0);
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 0.5;
-      });
-    }, 50);
-    
-    // Auto advance after 10 seconds
-    const timeout = setTimeout(() => {
-      if (currentIndex < stories.length - 1) {
-        onNext();
-      } else {
-        onClose();
-      }
-    }, 10000);
-    
-    // Check for screenshot
-    const detectScreenshot = () => {
-      toast({
-        title: t('messages.screenshotAlert', { username: user.username || user.email }),
-        description: t('messages.youTook'),
-      });
-    };
-    
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'PrintScreen') {
-        detectScreenshot();
-      }
-    });
+    startProgressTimer();
     
     return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-      document.removeEventListener('keydown', detectScreenshot);
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
     };
-  }, [currentStory, currentIndex, onNext, onClose, user, t]);
+  }, [currentUserIndex, currentStoryIndex, isPaused]);
   
-  const handleReaction = async (type: 'like' | 'love' | 'wow' | 'sad' | 'angry') => {
-    if (!user) return;
+  // Reset progress when story changes
+  useEffect(() => {
+    setProgress(0);
+  }, [currentUserIndex, currentStoryIndex]);
+  
+  // Detect when outside is clicked to close
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
     
-    setReactionType(type);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [onClose]);
+  
+  // Mark story as viewed
+  useEffect(() => {
+    if (currentStory && currentUser) {
+      // In a real app, this would send an API request to mark story as viewed
+      console.log(`Marking story ${currentStory.id} as viewed by ${currentUser?.id}`);
+    }
+  }, [currentStory, currentUser]);
+  
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
     
-    const { error } = await supabase
-      .from('story_reactions')
-      .insert({
-        story_id: currentStory.id,
-        user_id: user.id,
-        type
-      });
-    
-    if (error) {
-      console.error('Error adding reaction:', error);
+    if (diffHours >= 1) {
+      return `${diffHours}h`;
     } else {
-      toast({
-        title: t('common.success'),
-        description: t('stories.reactionAdded'),
-      });
+      return `${diffMins}m`;
     }
   };
   
-  const handleReply = async () => {
-    if (!replyInput.trim() || !user) return;
+  const startProgressTimer = () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
     
-    const { error } = await supabase
-      .from('story_replies')
-      .insert({
-        story_id: currentStory.id,
-        user_id: user.id,
-        message: replyInput.trim()
-      });
-    
-    if (error) {
-      console.error('Error sending reply:', error);
+    if (!isPaused) {
+      const interval = window.setInterval(() => {
+        setProgress(prev => {
+          const newProgress = prev + 0.333; // Update 3 times per second for a 5 second total duration
+          
+          if (newProgress >= 100) {
+            goToNextStory();
+            return 0;
+          }
+          
+          return newProgress;
+        });
+      }, 50);
+      
+      progressIntervalRef.current = interval;
+    }
+  };
+  
+  const goToPreviousStory = () => {
+    if (currentStoryIndex > 0) {
+      setCurrentStoryIndex(currentStoryIndex - 1);
+    } else if (currentUserIndex > 0) {
+      const prevUserIndex = currentUserIndex - 1;
+      setCurrentUserIndex(prevUserIndex);
+      const prevUserStories = stories[activeUsers[prevUserIndex].id] || [];
+      setCurrentStoryIndex(prevUserStories.length - 1);
+    }
+  };
+  
+  const goToNextStory = () => {
+    if (currentStoryIndex < userStories.length - 1) {
+      setCurrentStoryIndex(currentStoryIndex + 1);
+    } else if (currentUserIndex < activeUsers.length - 1) {
+      setCurrentUserIndex(currentUserIndex + 1);
+      setCurrentStoryIndex(0);
     } else {
-      toast({
-        title: t('common.success'),
-        description: t('stories.replySent'),
-      });
-      setReplyInput('');
-      setShowReplyInput(false);
+      onClose(); // We've reached the end of all stories
     }
   };
   
-  // Calculate time remaining
-  const getTimeRemaining = () => {
-    if (!currentStory) return '';
+  const handleReplySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
     
-    const expiresAt = new Date(currentStory.expiresAt).getTime();
-    const now = new Date().getTime();
-    const timeLeft = expiresAt - now;
-    
-    const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-    const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (hoursLeft > 0) {
-      return t('stories.hoursLeft', { count: hoursLeft });
-    }
-    return t('stories.minutesLeft', { count: minutesLeft });
+    // In a real app, this would send the reply to the server
+    console.log(`Sending reply to ${currentUser?.username}: ${replyText}`);
+    alert(`Reply sent: ${replyText}`);
+    setReplyText('');
   };
   
-  if (!currentStory) return null;
+  const handleReaction = (reaction: string) => {
+    // In a real app, this would add the reaction to the server
+    console.log(`Adding reaction ${reaction} to story ${currentStory?.id}`);
+    alert(`Reaction added: ${reaction}`);
+  };
+  
+  if (!currentUser || !currentStory) {
+    return null;
+  }
   
   return (
-    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
-      <div className="relative w-full max-w-md h-[80vh] bg-gradient-to-b from-primary/10 to-black/30 rounded-lg overflow-hidden backdrop-blur">
-        {/* Story header */}
-        <div className="absolute top-0 left-0 right-0 z-10 p-4">
-          <Progress value={progress} className="h-1 mb-4" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
+      <div 
+        ref={containerRef}
+        className="relative h-full max-h-[90vh] w-full max-w-md mx-auto overflow-hidden bg-black"
+      >
+        {/* Story image/video */}
+        <div className="relative h-full w-full">
+          <img 
+            src={currentStory.media_url} 
+            alt="Story" 
+            className="h-full w-full object-cover"
+          />
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Avatar>
-                <AvatarImage src={currentStory.userAvatar} alt={currentStory.username} />
-                <AvatarFallback>{currentStory.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+          {/* Progress bars */}
+          <div className="absolute top-0 left-0 right-0 flex px-2 pt-2 space-x-1">
+            {userStories.map((_, index) => (
+              <div 
+                key={index} 
+                className="h-1 rounded-full flex-1 bg-white/30 overflow-hidden"
+              >
+                {index === currentStoryIndex && (
+                  <div 
+                    className="h-full bg-white" 
+                    style={{ width: `${progress}%` }}
+                  />
+                )}
+                {index < currentStoryIndex && (
+                  <div className="h-full bg-white w-full" />
+                )}
+              </div>
+            ))}
+          </div>
+          
+          {/* User info */}
+          <div className="absolute top-4 left-0 right-0 flex items-center justify-between px-4">
+            <div className="flex items-center">
+              <Avatar className="h-8 w-8 mr-2 border border-primary">
+                <AvatarImage src={currentUser.avatar_url} />
+                <AvatarFallback>{currentUser.username.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-white font-medium">{currentStory.username}</p>
-                <p className="text-white/70 text-xs">{getTimeRemaining()}</p>
+                <p className="text-white text-sm font-medium">{currentUser.username}</p>
+                <p className="text-white/70 text-xs">
+                  {formatTimeAgo(currentStory.created_at)}
+                </p>
               </div>
             </div>
             
-            <Button variant="ghost" size="icon" onClick={onClose} className="text-white">
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-        
-        {/* Story content */}
-        <div 
-          className="h-full w-full flex items-center justify-center p-8"
-          style={currentStory.backgroundStyle ? { background: currentStory.backgroundStyle } : {}}
-        >
-          {currentStory.mediaUrl ? (
-            currentStory.mediaType === 'video' ? (
-              <video 
-                src={currentStory.mediaUrl} 
-                className="max-h-full max-w-full object-contain"
-                autoPlay 
-                muted 
-                loop
-              />
-            ) : (
-              <img 
-                src={currentStory.mediaUrl} 
-                alt="Story" 
-                className="max-h-full max-w-full object-contain"
-              />
-            )
-          ) : (
-            <div className="text-center text-white text-xl md:text-2xl font-medium">
-              {currentStory.content}
-            </div>
-          )}
-        </div>
-        
-        {/* Story footer/actions */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-1">
-              <Button variant="ghost" size="sm" className="text-white" onClick={() => handleReaction('like')}>
-                <Heart className={`h-5 w-5 ${reactionType === 'like' ? 'fill-red-500 text-red-500' : ''}`} />
+            <div className="flex items-center space-x-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-white hover:bg-white/20"
+                onClick={() => setIsPaused(!isPaused)}
+              >
+                {isPaused ? (
+                  <Play className="h-4 w-4" />
+                ) : (
+                  <Pause className="h-4 w-4" />
+                )}
               </Button>
               
               <Button 
                 variant="ghost" 
-                size="sm" 
-                className="text-white"
-                onClick={() => setShowReplyInput(!showReplyInput)}
+                size="icon" 
+                className="h-8 w-8 text-white hover:bg-white/20"
+                onClick={onClose}
               >
-                <MessageCircle className="h-5 w-5" />
+                <X className="h-5 w-5" />
               </Button>
-            </div>
-            
-            <div className="flex items-center space-x-1 text-white/80">
-              <Eye className="h-4 w-4" />
-              <span className="text-sm">{currentStory.viewCount}</span>
             </div>
           </div>
           
-          {showReplyInput && (
-            <div className="mt-3 flex space-x-2">
-              <input
-                type="text"
-                value={replyInput}
-                onChange={(e) => setReplyInput(e.target.value)}
-                placeholder={t('stories.replyToStory')}
-                className="flex-1 bg-white/10 text-white border-0 rounded-full px-4 py-2 text-sm focus:ring-1 focus:ring-primary"
-              />
-              <Button size="sm" onClick={handleReply}>
-                {t('stories.reply')}
+          {/* Navigation controls */}
+          <button
+            className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black/30 rounded-full p-1"
+            onClick={goToPreviousStory}
+          >
+            <ChevronLeft className="h-6 w-6 text-white" />
+          </button>
+          
+          <button
+            className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-black/30 rounded-full p-1"
+            onClick={goToNextStory}
+          >
+            <ChevronRight className="h-6 w-6 text-white" />
+          </button>
+          
+          {/* Caption */}
+          {currentStory.caption && (
+            <div className="absolute bottom-24 left-0 right-0 px-4">
+              <p className="text-white text-center">{currentStory.caption}</p>
+            </div>
+          )}
+          
+          {/* Story interactions */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
+            {isOwnStory ? (
+              <div>
+                <Button 
+                  variant="ghost" 
+                  className="text-white text-sm"
+                  onClick={() => setShowViewers(!showViewers)}
+                >
+                  <span className="flex items-center">
+                    {t('stories.viewedBy')} {currentStory.view_count}
+                  </span>
+                </Button>
+                
+                {showViewers && (
+                  <div className="mt-2 bg-black/70 rounded-lg p-2">
+                    {currentStory.viewers.length > 0 ? (
+                      <div>
+                        {/* Viewer list would go here */}
+                        <p className="text-white text-xs">Viewers will be shown here</p>
+                      </div>
+                    ) : (
+                      <p className="text-white text-xs">{t('stories.noViewersYet')}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <form onSubmit={handleReplySubmit} className="flex items-center space-x-2">
+                <Input 
+                  placeholder={t('stories.replyToStory')}
+                  className="bg-white/20 border-none text-white placeholder:text-white/70"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                />
+                <Button 
+                  type="submit" 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-10 w-10 text-white bg-white/20"
+                >
+                  <Send className="h-5 w-5" />
+                </Button>
+              </form>
+            )}
+          </div>
+          
+          {/* Reaction buttons (only shown for others' stories) */}
+          {!isOwnStory && (
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex flex-col space-y-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-10 w-10 rounded-full bg-white/20 text-white"
+                onClick={() => handleReaction('❤️')}
+              >
+                <Heart className="h-5 w-5 fill-red-500 text-red-500" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-10 w-10 rounded-full bg-white/20 text-white"
+                onClick={() => handleReaction('👍')}
+              >
+                <span className="text-xl">👍</span>
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-10 w-10 rounded-full bg-white/20 text-white"
+                onClick={() => handleReaction('😮')}
+              >
+                <span className="text-xl">😮</span>
               </Button>
             </div>
           )}
         </div>
-        
-        {/* Navigation buttons */}
-        {currentIndex > 0 && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white"
-            onClick={onPrev}
-          >
-            <ChevronLeft className="h-8 w-8" />
-          </Button>
-        )}
-        
-        {currentIndex < stories.length - 1 && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white"
-            onClick={onNext}
-          >
-            <ChevronRight className="h-8 w-8" />
-          </Button>
-        )}
       </div>
     </div>
   );

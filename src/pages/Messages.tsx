@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { 
@@ -81,19 +80,15 @@ const Messages: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Scroll to bottom of messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
   
-  // Fetch contacts
   useEffect(() => {
     if (!user) return;
     
     const fetchContacts = async () => {
       try {
-        // This would be a more complex query in a real app
-        // For demo purposes, we're just getting some users
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -124,11 +119,9 @@ const Messages: React.FC = () => {
     fetchContacts();
   }, [user]);
   
-  // Generate mock messages for selected contact
   useEffect(() => {
     if (!selectedContact || !user) return;
     
-    // Mark as read
     setContacts(prev => 
       prev.map(contact => 
         contact.id === selectedContact.id 
@@ -137,7 +130,6 @@ const Messages: React.FC = () => {
       )
     );
     
-    // Generate some mock messages
     const generateMockMessages = () => {
       const mockMessages: Message[] = [];
       const messageCount = 10 + Math.floor(Math.random() * 20);
@@ -169,7 +161,6 @@ const Messages: React.FC = () => {
     
     setMessages(generateMockMessages());
     
-    // Simulate occasional typing indicator
     const randomlyShowTyping = () => {
       if (Math.random() > 0.7) {
         setContacts(prev => 
@@ -199,19 +190,16 @@ const Messages: React.FC = () => {
     };
   }, [selectedContact, user]);
   
-  // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
   
-  // Reset mobile view when navigating away
   useEffect(() => {
     return () => {
       setShowChatList(true);
     };
   }, []);
   
-  // Handle typing indicator
   useEffect(() => {
     if (!newMessage || !selectedContact) return;
     
@@ -232,7 +220,6 @@ const Messages: React.FC = () => {
     };
   }, [newMessage, selectedContact]);
   
-  // Handle contact selection
   const handleSelectContact = (contact: Contact) => {
     setSelectedContact(contact);
     
@@ -241,7 +228,6 @@ const Messages: React.FC = () => {
     }
   };
   
-  // Handle send message
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedContact || !user) return;
     
@@ -257,7 +243,6 @@ const Messages: React.FC = () => {
     setMessages([...messages, newMsg]);
     setNewMessage("");
     
-    // Simulate reply
     if (Math.random() > 0.3) {
       setTimeout(() => {
         setContacts(prev => 
@@ -292,7 +277,6 @@ const Messages: React.FC = () => {
     }
   };
   
-  // Handle adding reaction to message
   const handleReaction = (messageId: string, reaction: string) => {
     setMessages(prev => 
       prev.map(msg => 
@@ -306,7 +290,6 @@ const Messages: React.FC = () => {
     setShowEmojiSelector(false);
   };
   
-  // Screenshot detection
   useEffect(() => {
     const detectScreenshot = () => {
       toast({
@@ -326,15 +309,14 @@ const Messages: React.FC = () => {
     };
   }, [t, user]);
   
-  // Format timestamp
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     
-    if (diff < 86400000) { // Less than 24 hours
+    if (diff < 86400000) {
       return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    } else if (diff < 604800000) { // Less than a week
+    } else if (diff < 604800000) {
       const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       return days[date.getDay()];
     } else {
@@ -342,7 +324,6 @@ const Messages: React.FC = () => {
     }
   };
   
-  // Format "last seen"
   const formatLastSeen = (timestamp: string) => {
     if (!timestamp) return t('messages.offline');
     
@@ -350,12 +331,12 @@ const Messages: React.FC = () => {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     
-    if (diff < 60000) { // Less than a minute
+    if (diff < 60000) {
       return t('messages.justNow');
-    } else if (diff < 3600000) { // Less than an hour
+    } else if (diff < 3600000) {
       const minutes = Math.floor(diff / 60000);
       return t('common.minutesAgo', { count: minutes });
-    } else if (diff < 86400000) { // Less than a day
+    } else if (diff < 86400000) {
       const hours = Math.floor(diff / 3600000);
       return t('common.hoursAgo', { count: hours });
     } else {
@@ -363,7 +344,6 @@ const Messages: React.FC = () => {
     }
   };
   
-  // Filter contacts by search query
   const filteredContacts = contacts.filter(contact => 
     (contact.username?.toLowerCase().includes(searchQuery.toLowerCase()) || 
      contact.email?.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -386,7 +366,6 @@ const Messages: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="rounded-lg border shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 h-[calc(100vh-12rem)]">
-        {/* Contact list - hidden on mobile when in chat view */}
         {(isDesktop || showChatList) && (
           <div className="border-r col-span-1 md:col-span-1 lg:col-span-1 flex flex-col h-full">
             <div className="p-4 border-b">
@@ -459,10 +438,8 @@ const Messages: React.FC = () => {
           </div>
         )}
         
-        {/* Chat area */}
         {selectedContact ? (
           <div className={`${isDesktop ? 'col-span-2 lg:col-span-3' : 'col-span-1'} flex flex-col h-full`}>
-            {/* Chat header */}
             <div className="p-4 border-b flex items-center">
               {!isDesktop && !showChatList && (
                 <Button 
@@ -517,7 +494,6 @@ const Messages: React.FC = () => {
               </div>
             </div>
             
-            {/* Messages area */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
                 {messages.map((message, index) => {
@@ -650,7 +626,6 @@ const Messages: React.FC = () => {
               </div>
             </ScrollArea>
             
-            {/* Message input */}
             <div className="p-3 border-t">
               <div className="flex items-center space-x-2">
                 <Button variant="ghost" size="icon">
@@ -677,14 +652,13 @@ const Messages: React.FC = () => {
                 <Button variant="ghost" size="icon">
                   <Mic className="h-5 w-5 text-muted-foreground" />
                 </Button>
-                <Button variant="primary" size="icon" onClick={handleSendMessage} disabled={!newMessage.trim()}>
+                <Button variant="default" size="icon" onClick={handleSendMessage} disabled={!newMessage.trim()}>
                   <Send className="h-5 w-5" />
                 </Button>
               </div>
             </div>
           </div>
         ) : (
-          // Empty state when no chat is selected
           <div className={`${isDesktop ? 'col-span-2 lg:col-span-3' : 'hidden'} flex flex-col items-center justify-center h-full bg-muted/20`}>
             <div className="text-center max-w-md px-4">
               <h3 className="text-2xl font-bold mb-2">{t('messages.selectConversation')}</h3>

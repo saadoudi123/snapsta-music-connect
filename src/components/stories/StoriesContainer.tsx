@@ -1,289 +1,191 @@
+
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { useAuth } from '@/contexts/AuthContext';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import StoryCard from './StoryCard';
 import StoryViewer from './StoryViewer';
 import CreateStoryForm from './CreateStoryForm';
-import supabase from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+interface Story {
+  id: string;
+  user_id: string;
+  media_url: string;
+  caption?: string;
+  created_at: string;
+  expires_at: string;
+  view_count: number;
+  viewers: string[];
+  reactions: { [key: string]: number };
+}
 
 interface User {
   id: string;
   username: string;
-  avatar_url: string;
+  avatar_url?: string;
 }
 
-interface Story {
-  id: string;
-  userId: string;
-  username: string;
-  userAvatar: string;
-  content: string;
-  mediaUrl?: string;
-  mediaType?: 'image' | 'video';
-  backgroundStyle?: string;
-  createdAt: string;
-  expiresAt: string;
-  viewCount: number;
-  reactions: any[];
-  replies: any[];
-  hasViewed: boolean;
+interface StoriesContainerProps {
+  className?: string;
 }
 
-const StoriesContainer: React.FC = () => {
+const StoriesContainer: React.FC<StoriesContainerProps> = ({ className }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   
-  const [stories, setStories] = useState<Story[]>([]);
-  const [usersWithStories, setUsersWithStories] = useState<User[]>([]);
-  const [selectedUserIndex, setSelectedUserIndex] = useState<number | null>(null);
-  const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
-  const [selectedUserStories, setSelectedUserStories] = useState<Story[]>([]);
-  const [showCreateStory, setShowCreateStory] = useState(false);
-  const [hasCurrentUserStory, setHasCurrentUserStory] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [stories, setStories] = useState<Record<string, Story[]>>({});
+  const [viewingStories, setViewingStories] = useState<boolean>(false);
+  const [currentUserIndex, setCurrentUserIndex] = useState<number>(0);
+  const [showCreateStory, setShowCreateStory] = useState<boolean>(false);
   
-  // Fetch stories on mount
+  // Fetch users with stories
   useEffect(() => {
-    if (!user) return;
-    
-    const fetchStories = async () => {
-      try {
-        // Get current stories (not expired)
-        const { data: storiesData, error: storiesError } = await supabase
-          .from('stories')
-          .select(`
-            id, 
-            content, 
-            media_url, 
-            media_type, 
-            background_style, 
-            created_at, 
-            expires_at,
-            user_id,
-            profiles(id, username, avatar_url)
-          `)
-          .gte('expires_at', new Date().toISOString())
-          .order('created_at', { ascending: false });
-        
-        if (storiesError) throw storiesError;
-        
-        if (!storiesData || storiesData.length === 0) {
-          setStories([]);
-          setUsersWithStories([]);
-          return;
+    const fetchUsers = async () => {
+      // In a real app, this would be an API call to fetch users with active stories
+      // For demo, we'll create mock data
+      
+      const mockUsers: User[] = [
+        {
+          id: 'user-1',
+          username: 'johndoe',
+          avatar_url: 'https://i.pravatar.cc/300?img=1'
+        },
+        {
+          id: 'user-2',
+          username: 'janedoe',
+          avatar_url: 'https://i.pravatar.cc/300?img=5'
+        },
+        {
+          id: 'user-3',
+          username: 'mike_smith',
+          avatar_url: 'https://i.pravatar.cc/300?img=3'
+        },
+        {
+          id: 'user-4',
+          username: 'sarah_j',
+          avatar_url: 'https://i.pravatar.cc/300?img=9'
+        },
+        {
+          id: 'user-5',
+          username: 'alex_p',
+          avatar_url: 'https://i.pravatar.cc/300?img=7'
         }
-        
-        // Get views for current user
-        const { data: viewsData, error: viewsError } = await supabase
-          .from('story_views')
-          .select('story_id')
-          .eq('user_id', user.id);
-        
-        if (viewsError) throw viewsError;
-        
-        const viewedStoryIds = new Set((viewsData || []).map(v => v.story_id));
-        
-        // Get view counts for each story
-        const { data: viewCountData, error: viewCountError } = await supabase
-          .from('story_views')
-          .select('story_id, count')
-          .order('count', { ascending: false });
-        
-        if (viewCountError) throw viewCountError;
-        
-        const viewCounts = (viewCountData || []).reduce((acc, curr) => {
-          acc[curr.story_id] = curr.count;
-          return acc;
-        }, {} as Record<string, number>);
-        
-        // Transform data
-        const formattedStories = storiesData.map(story => ({
-          id: story.id,
-          userId: story.user_id,
-          username: story.profiles?.username || 'Unknown',
-          userAvatar: story.profiles?.avatar_url || '',
-          content: story.content,
-          mediaUrl: story.media_url,
-          mediaType: story.media_type,
-          backgroundStyle: story.background_style,
-          createdAt: story.created_at,
-          expiresAt: story.expires_at,
-          viewCount: viewCounts[story.id] || 0,
-          reactions: [],
-          replies: [],
-          hasViewed: viewedStoryIds.has(story.id)
-        }));
-        
-        // Group stories by user
-        const userMap = new Map<string, User>();
-        
-        formattedStories.forEach(story => {
-          if (!userMap.has(story.userId)) {
-            userMap.set(story.userId, {
-              id: story.userId,
-              username: story.username,
-              avatar_url: story.userAvatar
-            });
-          }
+      ];
+      
+      if (user) {
+        // Add the current user to the beginning of the list
+        mockUsers.unshift({
+          id: user.id,
+          username: user.email?.split('@')[0] || 'me',
+          avatar_url: user.user_metadata?.avatar_url || undefined
         });
-        
-        // Check if current user has stories
-        setHasCurrentUserStory(formattedStories.some(story => story.userId === user.id));
-        
-        setStories(formattedStories);
-        setUsersWithStories(Array.from(userMap.values()));
-      } catch (error) {
-        console.error('Error fetching stories:', error);
       }
-    };
-    
-    fetchStories();
-    
-    // Set up real-time subscription for new stories
-    const storiesSubscription = supabase
-      .channel('public:stories')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'stories' }, 
-        () => {
-          fetchStories();
+      
+      setUsers(mockUsers);
+      
+      // Generate mock stories for each user
+      const mockStories: Record<string, Story[]> = {};
+      
+      mockUsers.forEach((user) => {
+        if (user.id !== 'user-1') { // Skip the first user to demonstrate users without stories
+          const storyCount = Math.floor(Math.random() * 3) + 1;
+          mockStories[user.id] = Array(storyCount).fill(null).map((_, i) => {
+            const createdAt = new Date();
+            createdAt.setHours(createdAt.getHours() - Math.random() * 23);
+            
+            const expiresAt = new Date(createdAt);
+            expiresAt.setHours(expiresAt.getHours() + 24);
+            
+            return {
+              id: `story-${user.id}-${i}`,
+              user_id: user.id,
+              media_url: `https://source.unsplash.com/random/1080x1920?sig=${user.id}-${i}`,
+              caption: Math.random() > 0.5 ? `This is my story ${i + 1}!` : undefined,
+              created_at: createdAt.toISOString(),
+              expires_at: expiresAt.toISOString(),
+              view_count: Math.floor(Math.random() * 50),
+              viewers: [],
+              reactions: {
+                '❤️': Math.floor(Math.random() * 10),
+                '👍': Math.floor(Math.random() * 7),
+                '😮': Math.floor(Math.random() * 5)
+              }
+            };
+          });
         }
-      )
-      .subscribe();
-    
-    return () => {
-      supabase.removeChannel(storiesSubscription);
+      });
+      
+      setStories(mockStories);
     };
+    
+    fetchUsers();
   }, [user]);
   
-  const handleStoryCardClick = (userIndex: number) => {
-    // If it's the current user and they have no story, show create form
-    if (userIndex === 0 && !hasCurrentUserStory && usersWithStories[0]?.id === user?.id) {
-      setShowCreateStory(true);
-      return;
-    }
-    
-    setSelectedUserIndex(userIndex);
-    setSelectedStoryIndex(0);
-    
-    // Get stories for selected user
-    const userStories = stories.filter(story => story.userId === usersWithStories[userIndex].id);
-    setSelectedUserStories(userStories);
+  const handleViewStory = (userIndex: number) => {
+    setCurrentUserIndex(userIndex);
+    setViewingStories(true);
   };
   
-  const handleStoryCreated = () => {
+  const handleCloseStoryViewer = () => {
+    setViewingStories(false);
+  };
+  
+  const handleCreateStory = () => {
+    setShowCreateStory(true);
+  };
+  
+  const handleStoryCreated = (story: Story) => {
+    if (user) {
+      setStories(prev => ({
+        ...prev,
+        [user.id]: [story, ...(prev[user.id] || [])]
+      }));
+    }
     setShowCreateStory(false);
-    // Refetch will happen through subscription
   };
   
-  const handleCloseViewer = () => {
-    setSelectedUserIndex(null);
-    setSelectedUserStories([]);
-  };
-  
-  const handleNextStory = () => {
-    if (selectedStoryIndex < selectedUserStories.length - 1) {
-      setSelectedStoryIndex(prev => prev + 1);
-    } else {
-      // Move to next user's stories
-      if (selectedUserIndex !== null && selectedUserIndex < usersWithStories.length - 1) {
-        const nextUserIndex = selectedUserIndex + 1;
-        setSelectedUserIndex(nextUserIndex);
-        setSelectedStoryIndex(0);
-        
-        const nextUserStories = stories.filter(story => story.userId === usersWithStories[nextUserIndex].id);
-        setSelectedUserStories(nextUserStories);
-      } else {
-        // No more stories, close viewer
-        handleCloseViewer();
-      }
-    }
-  };
-  
-  const handlePrevStory = () => {
-    if (selectedStoryIndex > 0) {
-      setSelectedStoryIndex(prev => prev - 1);
-    } else {
-      // Move to previous user's stories
-      if (selectedUserIndex !== null && selectedUserIndex > 0) {
-        const prevUserIndex = selectedUserIndex - 1;
-        setSelectedUserIndex(prevUserIndex);
-        
-        const prevUserStories = stories.filter(story => story.userId === usersWithStories[prevUserIndex].id);
-        setSelectedUserStories(prevUserStories);
-        setSelectedStoryIndex(prevUserStories.length - 1);
-      }
-    }
-  };
-  
-  // Sort users to show current user first, then users with unviewed stories
-  const sortedUsers = [...usersWithStories].sort((a, b) => {
-    // Current user always first
-    if (a.id === user?.id) return -1;
-    if (b.id === user?.id) return 1;
-    
-    // Then users with unviewed stories
-    const aHasUnviewed = stories.some(s => s.userId === a.id && !s.hasViewed);
-    const bHasUnviewed = stories.some(s => s.userId === b.id && !s.hasViewed);
-    
-    if (aHasUnviewed && !bHasUnviewed) return -1;
-    if (!aHasUnviewed && bHasUnviewed) return 1;
-    
-    return 0;
-  });
+  const usersWithStories = users.map(user => ({
+    ...user,
+    hasStory: !!stories[user.id]?.length,
+    hasUnviewed: !!stories[user.id]?.some(story => !story.viewers.includes(user?.id || ''))
+  }));
   
   return (
-    <div className="mb-6">
-      <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex space-x-4 p-4">
-          {/* Add your story */}
-          {user && (
+    <div className={className}>
+      <ScrollArea className="w-full pb-2">
+        <div className="flex space-x-4 px-4 py-2">
+          {usersWithStories.map((user, index) => (
             <StoryCard
-              username={user.email?.split('@')[0] || 'You'}
-              avatar={user.user_metadata?.avatar_url}
-              hasStory={hasCurrentUserStory}
-              isOwn={true}
-              onClick={() => handleStoryCardClick(0)}
+              key={user.id}
+              username={user.username}
+              avatar={user.avatar_url}
+              hasStory={user.hasStory}
+              hasUnviewed={user.hasUnviewed}
+              isOwn={user.id === users[0]?.id}
+              onClick={() => user.id === users[0]?.id && !user.hasStory 
+                ? handleCreateStory() 
+                : handleViewStory(index)
+              }
             />
-          )}
-          
-          {/* Other users' stories */}
-          {sortedUsers
-            .filter(u => u.id !== user?.id) // Filter out current user as we already show them first
-            .map((storyUser, index) => {
-              const userStories = stories.filter(s => s.userId === storyUser.id);
-              const hasUnviewed = userStories.some(s => !s.hasViewed);
-              
-              return (
-                <StoryCard
-                  key={storyUser.id}
-                  id={storyUser.id}
-                  username={storyUser.username}
-                  avatar={storyUser.avatar_url}
-                  hasStory={true}
-                  hasUnviewed={hasUnviewed}
-                  onClick={() => handleStoryCardClick(index + 1)} // +1 because index 0 is current user
-                />
-              );
-            })}
+          ))}
         </div>
-        <ScrollBar orientation="horizontal" />
       </ScrollArea>
       
-      {/* Story viewer */}
-      {selectedUserIndex !== null && selectedUserStories.length > 0 && (
+      {viewingStories && (
         <StoryViewer
-          stories={selectedUserStories}
-          currentIndex={selectedStoryIndex}
-          onClose={handleCloseViewer}
-          onPrev={handlePrevStory}
-          onNext={handleNextStory}
+          users={users}
+          stories={stories}
+          initialUserIndex={currentUserIndex}
+          onClose={handleCloseStoryViewer}
         />
       )}
       
-      {/* Create story form */}
       {showCreateStory && (
         <CreateStoryForm
-          onSuccess={handleStoryCreated}
+          onStoryCreated={handleStoryCreated}
           onCancel={() => setShowCreateStory(false)}
         />
       )}
