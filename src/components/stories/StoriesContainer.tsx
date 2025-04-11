@@ -187,6 +187,7 @@ const StoriesContainer: React.FC<StoriesContainerProps> = ({ className }) => {
         <CreateStoryForm
           onStoryCreated={handleStoryCreated}
           onCancel={() => setShowCreateStory(false)}
+          onSuccess={() => {}}
         />
       )}
     </div>
