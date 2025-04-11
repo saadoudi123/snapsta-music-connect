@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, ChevronLeft, ChevronRight, Heart, Send, MessageCircle, Pause, Play } from 'lucide-react';
@@ -40,7 +39,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   onClose
 }) => {
   const { t } = useTranslation();
-  const { user: currentUser } = useAuth();
+  const { user: authUser } = useAuth();
   const isMobile = useIsMobile();
   
   const [currentUserIndex, setCurrentUserIndex] = useState(initialUserIndex);
@@ -54,12 +53,11 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   
   const activeUsers = users.filter(user => stories[user.id]?.length > 0);
-  const currentUser = activeUsers[currentUserIndex];
-  const userStories = currentUser ? stories[currentUser.id] || [] : [];
+  const storyUser = activeUsers[currentUserIndex];
+  const userStories = storyUser ? stories[storyUser.id] || [] : [];
   const currentStory = userStories[currentStoryIndex];
-  const isOwnStory = currentUser?.id === currentUser?.id;
+  const isOwnStory = storyUser?.id === authUser?.id;
   
-  // Initialize story progress timer
   useEffect(() => {
     startProgressTimer();
     
@@ -70,12 +68,10 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     };
   }, [currentUserIndex, currentStoryIndex, isPaused]);
   
-  // Reset progress when story changes
   useEffect(() => {
     setProgress(0);
   }, [currentUserIndex, currentStoryIndex]);
   
-  // Detect when outside is clicked to close
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -89,13 +85,11 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     };
   }, [onClose]);
   
-  // Mark story as viewed
   useEffect(() => {
-    if (currentStory && currentUser) {
-      // In a real app, this would send an API request to mark story as viewed
-      console.log(`Marking story ${currentStory.id} as viewed by ${currentUser?.id}`);
+    if (currentStory && storyUser) {
+      console.log(`Marking story ${currentStory.id} as viewed by ${storyUser?.id}`);
     }
-  }, [currentStory, currentUser]);
+  }, [currentStory, storyUser]);
   
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -160,19 +154,17 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     e.preventDefault();
     if (!replyText.trim()) return;
     
-    // In a real app, this would send the reply to the server
-    console.log(`Sending reply to ${currentUser?.username}: ${replyText}`);
+    console.log(`Sending reply to ${storyUser?.username}: ${replyText}`);
     alert(`Reply sent: ${replyText}`);
     setReplyText('');
   };
   
   const handleReaction = (reaction: string) => {
-    // In a real app, this would add the reaction to the server
     console.log(`Adding reaction ${reaction} to story ${currentStory?.id}`);
     alert(`Reaction added: ${reaction}`);
   };
   
-  if (!currentUser || !currentStory) {
+  if (!storyUser || !currentStory) {
     return null;
   }
   
@@ -182,7 +174,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         ref={containerRef}
         className="relative h-full max-h-[90vh] w-full max-w-md mx-auto overflow-hidden bg-black"
       >
-        {/* Story image/video */}
         <div className="relative h-full w-full">
           <img 
             src={currentStory.media_url} 
@@ -190,7 +181,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             className="h-full w-full object-cover"
           />
           
-          {/* Progress bars */}
           <div className="absolute top-0 left-0 right-0 flex px-2 pt-2 space-x-1">
             {userStories.map((_, index) => (
               <div 
@@ -210,15 +200,14 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             ))}
           </div>
           
-          {/* User info */}
           <div className="absolute top-4 left-0 right-0 flex items-center justify-between px-4">
             <div className="flex items-center">
               <Avatar className="h-8 w-8 mr-2 border border-primary">
-                <AvatarImage src={currentUser.avatar_url} />
-                <AvatarFallback>{currentUser.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={storyUser.avatar_url} />
+                <AvatarFallback>{storyUser.username.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-white text-sm font-medium">{currentUser.username}</p>
+                <p className="text-white text-sm font-medium">{storyUser.username}</p>
                 <p className="text-white/70 text-xs">
                   {formatTimeAgo(currentStory.created_at)}
                 </p>
@@ -250,7 +239,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             </div>
           </div>
           
-          {/* Navigation controls */}
           <button
             className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-black/30 rounded-full p-1"
             onClick={goToPreviousStory}
@@ -265,14 +253,12 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             <ChevronRight className="h-6 w-6 text-white" />
           </button>
           
-          {/* Caption */}
           {currentStory.caption && (
             <div className="absolute bottom-24 left-0 right-0 px-4">
               <p className="text-white text-center">{currentStory.caption}</p>
             </div>
           )}
           
-          {/* Story interactions */}
           <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
             {isOwnStory ? (
               <div>
@@ -290,7 +276,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
                   <div className="mt-2 bg-black/70 rounded-lg p-2">
                     {currentStory.viewers.length > 0 ? (
                       <div>
-                        {/* Viewer list would go here */}
                         <p className="text-white text-xs">Viewers will be shown here</p>
                       </div>
                     ) : (
@@ -319,7 +304,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             )}
           </div>
           
-          {/* Reaction buttons (only shown for others' stories) */}
           {!isOwnStory && (
             <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex flex-col space-y-2">
               <Button 

@@ -26,10 +26,10 @@ interface YT {
         };
         events?: {
           onReady?: (event: YT.PlayerEvent) => void;
-          onStateChange?: (event: YT.PlayerEvent) => void;
+          onStateChange?: (event: YT.PlayerStateEvent) => void;
           onPlaybackQualityChange?: (event: YT.PlayerEvent) => void;
           onPlaybackRateChange?: (event: YT.PlayerEvent) => void;
-          onError?: (event: YT.PlayerEvent) => void;
+          onError?: (event: YT.PlayerErrorEvent) => void;
           onApiChange?: (event: YT.PlayerEvent) => void;
         };
       }
@@ -49,6 +49,16 @@ declare namespace YT {
   interface PlayerEvent {
     target: Player;
     data: any;
+  }
+  
+  interface PlayerStateEvent {
+    target: Player;
+    data: number;
+  }
+  
+  interface PlayerErrorEvent {
+    target: Player;
+    data: number;
   }
 
   interface Player {

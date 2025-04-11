@@ -10,12 +10,25 @@ import { useToast } from '@/hooks/use-toast';
 import supabase from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface CreateStoryFormProps {
-  onSuccess: () => void;
-  onCancel: () => void;
+interface Story {
+  id: string;
+  user_id: string;
+  media_url: string;
+  caption?: string;
+  created_at: string;
+  expires_at: string;
+  view_count: number;
+  viewers: string[];
+  reactions: { [key: string]: number };
 }
 
-const CreateStoryForm: React.FC<CreateStoryFormProps> = ({ onSuccess, onCancel }) => {
+interface CreateStoryFormProps {
+  onSuccess?: () => void;
+  onCancel: () => void;
+  onStoryCreated: (story: Story) => void;
+}
+
+const CreateStoryForm: React.FC<CreateStoryFormProps> = ({ onStoryCreated, onCancel, onSuccess }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -77,28 +90,42 @@ const CreateStoryForm: React.FC<CreateStoryFormProps> = ({ onSuccess, onCancel }
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
       
-      // Create story record
-      const { error: insertError } = await supabase
-        .from('stories')
-        .insert({
-          user_id: user.id,
-          content: text,
-          media_url: mediaUrl || null,
-          media_type: mediaType || null,
-          background_style: !mediaUrl ? `background-color: ${backgroundColor}; color: ${textColor}; font-size: ${fontSize};` : null,
-          expires_at: expiresAt.toISOString()
-        });
+      // Create a mock story for demo
+      const newStory: Story = {
+        id: `story-${user.id}-${Date.now()}`,
+        user_id: user.id,
+        media_url: mediaUrl || 'https://source.unsplash.com/random/1080x1920',
+        caption: text || undefined,
+        created_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString(),
+        view_count: 0,
+        viewers: [],
+        reactions: {}
+      };
       
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
+      // In a real app, we would save this to Supabase
+      // const { error: insertError } = await supabase
+      //   .from('stories')
+      //   .insert({
+      //     user_id: user.id,
+      //     content: text,
+      //     media_url: mediaUrl || null,
+      //     media_type: mediaType || null,
+      //     background_style: !mediaUrl ? `background-color: ${backgroundColor}; color: ${textColor}; font-size: ${fontSize};` : null,
+      //     expires_at: expiresAt.toISOString()
+      //   });
+      
+      // if (insertError) {
+      //   throw new Error(insertError.message);
+      // }
       
       toast({
         title: t('stories.storyShared'),
         description: t('stories.storyWillDisappear'),
       });
       
-      onSuccess();
+      onStoryCreated(newStory);
+      if (onSuccess) onSuccess();
     } catch (error) {
       console.error('Error creating story:', error);
       toast({

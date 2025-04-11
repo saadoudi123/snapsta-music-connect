@@ -90,8 +90,8 @@ const YouTubePlayer: React.FC = () => {
     
     // This function will be called when the API is ready
     window.onYouTubeIframeAPIReady = () => {
-      if (playerContainerRef.current) {
-        playerRef.current = new YT.Player(playerContainerRef.current, {
+      if (playerContainerRef.current && window.YT) {
+        playerRef.current = new window.YT.Player(playerContainerRef.current, {
           height: '0',
           width: '0',
           videoId: '',
@@ -128,19 +128,19 @@ const YouTubePlayer: React.FC = () => {
     event.target.setVolume(volume);
   };
   
-  const onPlayerStateChange = (event: YT.OnStateChangeEvent) => {
-    if (event.data === YT.PlayerState.PLAYING) {
+  const onPlayerStateChange = (event: YT.PlayerStateEvent) => {
+    if (event.data === window.YT?.PlayerState.PLAYING) {
       setIsPlaying(true);
       startProgressTimer();
-    } else if (event.data === YT.PlayerState.PAUSED) {
+    } else if (event.data === window.YT?.PlayerState.PAUSED) {
       setIsPlaying(false);
       stopProgressTimer();
-    } else if (event.data === YT.PlayerState.ENDED) {
+    } else if (event.data === window.YT?.PlayerState.ENDED) {
       handleSongEnd();
     }
   };
   
-  const onPlayerError = (event: YT.OnErrorEvent) => {
+  const onPlayerError = (event: YT.PlayerErrorEvent) => {
     console.error('Player error:', event.data);
     toast({
       title: t('errors.mediaPlaybackError'),
