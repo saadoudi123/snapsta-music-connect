@@ -4,14 +4,40 @@ import SearchBar from '../SearchBar';
 import PlayerDisplay from '../PlayerDisplay';
 import YouTubeCore from '../YouTubeCore';
 import ActionButtons from '../ActionButtons';
-
 import { useYouTubeSearch } from '../hooks/useYouTubeSearch';
 import { usePlayerNavigation } from '../hooks/usePlayerNavigation';
-import { allSongs } from '../data/mockSongs';
+import { allSongs, trendingSongs } from '../data/mockSongs';
+import { Song } from '../types';
 
 interface PlayerLeftProps {
-  player: ReturnType<typeof useYouTubePlayer>;
-  download: ReturnType<typeof useYouTubeDownload>;
+  player: {
+    currentSong: Song | null;
+    isPlaying: boolean;
+    togglePlay: () => void;
+    playSong: (song: Song) => void;
+    isShuffleOn: boolean;
+    toggleShuffle: () => void;
+    repeatMode: number;
+    toggleRepeat: () => void;
+    volume: number;
+    handleVolumeChange: (value: number[]) => void;
+    progress: number;
+    duration: number;
+    currentTime: number;
+    handleProgressChange: (value: number[]) => void;
+    formatTime: (seconds: number) => string;
+    isBackgroundPlay: boolean;
+    toggleBackgroundPlay: () => void;
+    onPlayerReady: () => void;
+    onPlayerStateChange: (state: any) => void;
+    onPlayerError: (error: number) => void;
+    onProgressChange: (currentTime: number, duration: number) => void;
+  };
+  download: {
+    showDownloadDialog: boolean;
+    setShowDownloadDialog: (show: boolean) => void;
+    handleDownload: (song: Song | null, format: 'mp3' | 'mp4') => void;
+  };
 }
 
 const PlayerLeft: React.FC<PlayerLeftProps> = ({ player, download }) => {
@@ -58,9 +84,9 @@ const PlayerLeft: React.FC<PlayerLeftProps> = ({ player, download }) => {
         videoId={player.currentSong?.videoId || null}
         isPlaying={player.isPlaying}
         volume={player.volume}
-        onPlayerReady={player.onPlayerReady}
-        onPlayerStateChange={player.onPlayerStateChange}
-        onPlayerError={player.onPlayerError}
+        onReady={player.onPlayerReady}
+        onStateChange={player.onPlayerStateChange}
+        onError={player.onPlayerError}
         onProgressChange={player.onProgressChange}
       />
       
