@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListMusic } from 'lucide-react';
@@ -13,7 +12,7 @@ import ActionButtons from './player/ActionButtons';
 import DownloadDialog from './player/DownloadDialog';
 import SongList from './player/SongList';
 import EmptyQueueDisplay from './player/EmptyQueueDisplay';
-import { Song } from './player/types';
+import { Song, YouTubePlayerState } from './player/types';
 
 const YouTubePlayer: React.FC = () => {
   const { t } = useTranslation();
@@ -50,31 +49,38 @@ const YouTubePlayer: React.FC = () => {
   ];
   
   // Player event handlers
-  const onPlayerReady = (player: YT.Player) => {
+  const onPlayerReady = () => {
     console.log('Player ready');
-    playerRef.current = player;
-    player.setVolume(volume);
+    if (playerRef.current) {
+      playerRef.current.setVolume(volume);
+    }
   };
   
-  const onPlayerStateChange = (event: YT.PlayerStateEvent) => {
-    if (event.data === window.YT?.PlayerState.PLAYING) {
+  const onPlayerStateChange = (state: YouTubePlayerState) => {
+    if (state === YouTubePlayerState.PLAYING) {
       setIsPlaying(true);
       startProgressTimer();
-    } else if (event.data === window.YT?.PlayerState.PAUSED) {
+    } else if (state === YouTubePlayerState.PAUSED) {
       setIsPlaying(false);
       stopProgressTimer();
-    } else if (event.data === window.YT?.PlayerState.ENDED) {
+    } else if (state === YouTubePlayerState.ENDED) {
       handleSongEnd();
     }
   };
   
-  const onPlayerError = (event: YT.PlayerErrorEvent) => {
-    console.error('Player error:', event.data);
+  const onPlayerError = (errorCode: number) => {
+    console.error('Player error:', errorCode);
     toast({
       title: t('errors.mediaPlaybackError'),
       description: t('errors.tryAgain'),
       variant: 'destructive'
     });
+  };
+  
+  const onProgressChange = (currentTime: number, duration: number) => {
+    setCurrentTime(currentTime);
+    setDuration(duration);
+    setProgress((currentTime / duration) * 100);
   };
   
   // Progress timer
@@ -371,9 +377,13 @@ const YouTubePlayer: React.FC = () => {
           
           {/* YouTube player - hidden */}
           <YouTubeCore
-            onPlayerReady={onPlayerReady}
-            onPlayerStateChange={onPlayerStateChange}
-            onPlayerError={onPlayerError}
+            videoId={currentSong?.videoId || null}
+            isPlaying={isPlaying}
+            volume={volume}
+            onReady={onPlayerReady}
+            onStateChange={onPlayerStateChange}
+            onError={onPlayerError}
+            onProgressChange={onProgressChange}
           />
           
           {/* Action buttons */}

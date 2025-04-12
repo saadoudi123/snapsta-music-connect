@@ -3,23 +3,23 @@ import React, { useEffect, useRef } from 'react';
 import { YouTubePlayerState } from '@/components/music/player/types';
 
 interface YouTubeCoreProps {
-  videoId: string | null;
-  isPlaying: boolean;
-  volume: number;
+  videoId?: string | null;
+  isPlaying?: boolean;
+  volume?: number;
   onReady: () => void;
   onStateChange: (state: YouTubePlayerState) => void;
   onError: (error: number) => void;
-  onProgressChange: (currentTime: number, duration: number) => void;
+  onProgressChange?: (currentTime: number, duration: number) => void;
 }
 
 const YouTubeCore: React.FC<YouTubeCoreProps> = ({
-  videoId,
-  isPlaying,
-  volume,
+  videoId = null,
+  isPlaying = false,
+  volume = 80,
   onReady,
   onStateChange,
   onError,
-  onProgressChange,
+  onProgressChange = () => {},
 }) => {
   const playerRef = useRef<YT.Player | null>(null);
   const playerElementRef = useRef<HTMLDivElement>(null);
@@ -62,7 +62,6 @@ const YouTubeCore: React.FC<YouTubeCoreProps> = ({
         playsinline: 1,
         rel: 0,
         showinfo: 0,
-        // iv_load_policy: 3, // Removing this line as it's causing TypeScript error
       },
       events: {
         onReady: handleReady,
@@ -84,13 +83,13 @@ const YouTubeCore: React.FC<YouTubeCoreProps> = ({
     onReady();
   };
 
-  const handleStateChange = (event: YT.OnStateChangeEvent) => {
+  const handleStateChange = (event: YT.PlayerEvent) => {
     const state = event.data as YouTubePlayerState;
     onStateChange(state);
   };
 
-  const handleError = (event: YT.OnErrorEvent) => {
-    onError(event.data);
+  const handleError = (event: YT.PlayerEvent) => {
+    onError(event.data as number);
   };
 
   const trackProgress = () => {
