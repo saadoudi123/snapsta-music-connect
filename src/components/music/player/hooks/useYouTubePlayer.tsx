@@ -30,7 +30,7 @@ export function useYouTubePlayer() {
       }
     } else if (controls.repeatMode === 1) {
       // Repeat all functionality is handled in playNextSong
-      playNextSong();
+      controls.playNextSong();
     } else {
       // Stop playing
       controls.setIsPlaying(false);
@@ -76,8 +76,8 @@ export function useYouTubePlayer() {
     formatTime: progress.formatTime,
     togglePlay: controls.togglePlay,
     playSong,
-    playNextSong: () => {}, // This should be implemented in component where trending songs are available
-    playPreviousSong: () => {}, // This should be implemented in component where trending songs are available
+    playNextSong: controls.playNextSong,
+    playPreviousSong: controls.playPreviousSong,
     handleVolumeChange: (value: number[]) => progress.handleVolumeChange(value, controls.playerRef.current),
     handleProgressChange: (value: number[]) => progress.handleProgressChange(value, controls.playerRef.current),
     toggleShuffle: controls.toggleShuffle,

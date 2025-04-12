@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Song } from '../types';
 import { toast } from '@/hooks/use-toast';
+import { trendingSongs } from '../data/mockSongs';
 
 export function usePlayerControls() {
   const { t } = useTranslation();
@@ -37,6 +38,40 @@ export function usePlayerControls() {
     setIsPlaying(true);
   };
   
+  // Play next song
+  const playNextSong = () => {
+    if (!currentSong) return;
+    
+    const currentIndex = trendingSongs.findIndex(song => song.id === currentSong.id);
+    
+    if (currentIndex !== -1 && currentIndex < trendingSongs.length - 1) {
+      playSong(trendingSongs[currentIndex + 1]);
+    } else if (isShuffleOn) {
+      const randomIndex = Math.floor(Math.random() * trendingSongs.length);
+      playSong(trendingSongs[randomIndex]);
+    } else if (repeatMode === 1 && currentIndex === trendingSongs.length - 1) {
+      // Repeat all - go back to first song
+      playSong(trendingSongs[0]);
+    }
+  };
+
+  // Play previous song
+  const playPreviousSong = () => {
+    if (!currentSong) return;
+    
+    const currentIndex = trendingSongs.findIndex(song => song.id === currentSong.id);
+    
+    if (currentIndex > 0) {
+      playSong(trendingSongs[currentIndex - 1]);
+    } else if (isShuffleOn) {
+      const randomIndex = Math.floor(Math.random() * trendingSongs.length);
+      playSong(trendingSongs[randomIndex]);
+    } else if (repeatMode === 1 && currentIndex === 0) {
+      // Repeat all - go to last song
+      playSong(trendingSongs[trendingSongs.length - 1]);
+    }
+  };
+  
   // Toggle shuffle
   const toggleShuffle = () => {
     setIsShuffleOn(!isShuffleOn);
@@ -57,6 +92,8 @@ export function usePlayerControls() {
     playerRef,
     togglePlay,
     playSong,
+    playNextSong,
+    playPreviousSong,
     toggleShuffle,
     toggleRepeat
   };
