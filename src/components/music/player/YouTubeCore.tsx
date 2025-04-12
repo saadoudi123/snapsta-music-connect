@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { YouTubePlayerState } from './types';
 
@@ -145,7 +144,7 @@ const YouTubeCore: React.FC<YouTubeCoreProps> = ({
     }
   }, [volume, onReady, clearProgressTimer, onError]);
 
-  const handleStateChange = useCallback((event: YT.OnStateChangeEvent) => {
+  const handleStateChange = useCallback((event: { data: number }) => {
     try {
       const state = event.data as YouTubePlayerState;
       onStateChange(state);
@@ -155,7 +154,7 @@ const YouTubeCore: React.FC<YouTubeCoreProps> = ({
     }
   }, [onStateChange, onError]);
 
-  const handleError = useCallback((event: YT.OnErrorEvent) => {
+  const handleError = useCallback((event: { data: number }) => {
     const errorCode = event.data as number;
     console.error('YouTube player error:', errorCode);
     onError(errorCode);

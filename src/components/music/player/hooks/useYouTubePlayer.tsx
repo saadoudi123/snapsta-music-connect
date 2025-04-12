@@ -1,278 +1,95 @@
 
-import { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Song, YouTubePlayerState } from '../types';
-import { toast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
+import { Song } from '../types';
+import { usePlayerControls } from './usePlayerControls';
+import { usePlayerQueue } from './usePlayerQueue';
+import { usePlayerProgress } from './usePlayerProgress';
+import { useBackgroundPlay } from './useBackgroundPlay';
+import { usePlayerEvents } from './usePlayerEvents';
 
 export function useYouTubePlayer() {
-  const { t } = useTranslation();
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentSong, setCurrentSong] = useState<Song | null>(null);
-  const [queue, setQueue] = useState<Song[]>([]);
-  const [volume, setVolume] = useState(80);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isShuffleOn, setIsShuffleOn] = useState(false);
-  const [repeatMode, setRepeatMode] = useState(0); // 0: off, 1: repeat all, 2: repeat one
-  const [isBackgroundPlay, setIsBackgroundPlay] = useState(false);
+  // Combine all the hooks
+  const controls = usePlayerControls();
+  const queueManager = usePlayerQueue();
+  const progress = usePlayerProgress();
+  const backgroundPlay = useBackgroundPlay();
   
-  const playerRef = useRef<YT.Player | null>(null);
-  const progressTimerRef = useRef<number | null>(null);
-  
-  // Format time (seconds to MM:SS)
-  const formatTime = (seconds: number) => {
-    if (isNaN(seconds)) return '0:00';
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-  
-  // Progress timer
-  const startProgressTimer = () => {
-    if (progressTimerRef.current) {
-      clearInterval(progressTimerRef.current);
-    }
-    
-    progressTimerRef.current = window.setInterval(() => {
-      if (playerRef.current) {
-        const currentTime = playerRef.current.getCurrentTime();
-        const duration = playerRef.current.getDuration();
-        setCurrentTime(currentTime);
-        setDuration(duration);
-        setProgress((currentTime / duration) * 100);
-      }
-    }, 1000);
-  };
-  
-  const stopProgressTimer = () => {
-    if (progressTimerRef.current) {
-      clearInterval(progressTimerRef.current);
-      progressTimerRef.current = null;
-    }
-  };
-  
-  // Player event handlers
-  const onPlayerReady = () => {
-    console.log('Player ready');
-    if (playerRef.current) {
-      playerRef.current.setVolume(volume);
-    }
-  };
-  
-  const onPlayerStateChange = (state: YouTubePlayerState) => {
-    if (state === YouTubePlayerState.PLAYING) {
-      setIsPlaying(true);
-      startProgressTimer();
-    } else if (state === YouTubePlayerState.PAUSED) {
-      setIsPlaying(false);
-      stopProgressTimer();
-    } else if (state === YouTubePlayerState.ENDED) {
-      handleSongEnd();
-    }
-  };
-  
-  const onPlayerError = (errorCode: number) => {
-    console.error('Player error:', errorCode);
-    toast({
-      title: t('errors.mediaPlaybackError'),
-      description: t('errors.tryAgain'),
-      variant: 'destructive'
-    });
-  };
-  
-  const onProgressChange = (currentTime: number, duration: number) => {
-    setCurrentTime(currentTime);
-    setDuration(duration);
-    setProgress((currentTime / duration) * 100);
-  };
-  
-  // Play song
-  const playSong = (song: Song) => {
-    if (!playerRef.current || !song.videoId) return;
-    
-    setCurrentSong(song);
-    playerRef.current.loadVideoById(song.videoId);
-    playerRef.current.playVideo();
-    setIsPlaying(true);
-    
-    // Update document title and show notification if background play is enabled
-    if (isBackgroundPlay) {
-      document.title = `${song.title} - ${song.artist}`;
-      
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(t('music.nowPlaying'), {
-          body: `${song.title} - ${song.artist}`,
-          icon: song.thumbnail
-        });
-      }
-    }
-  };
-  
-  // Toggle play/pause
-  const togglePlay = () => {
-    if (!playerRef.current) return;
-    
-    if (isPlaying) {
-      playerRef.current.pauseVideo();
-      setIsPlaying(false);
-    } else {
-      if (currentSong) {
-        playerRef.current.playVideo();
-        setIsPlaying(true);
-      }
-    }
-  };
-  
-  // Handle song end
+  // Handle song end based on repeat mode and queue
   const handleSongEnd = () => {
-    if (repeatMode === 2) {
+    if (controls.repeatMode === 2) {
       // Repeat current song
-      if (playerRef.current && currentSong) {
-        playerRef.current.seekTo(0);
-        playerRef.current.playVideo();
+      if (controls.playerRef.current && controls.currentSong) {
+        controls.playerRef.current.seekTo(0);
+        controls.playerRef.current.playVideo();
       }
-    } else if (queue.length > 0) {
-      // Play next song
-      playNextSong();
-    } else if (repeatMode === 1) {
-      // Repeat all functionality handled in playNextSong
+    } else if (queueManager.queue.length > 0) {
+      // Play next song from queue
+      const nextSong = queueManager.dequeueNextSong();
+      if (nextSong) {
+        controls.playSong(nextSong);
+      }
+    } else if (controls.repeatMode === 1) {
+      // Repeat all functionality is handled in playNextSong
       playNextSong();
     } else {
       // Stop playing
-      setIsPlaying(false);
+      controls.setIsPlaying(false);
     }
   };
   
-  // Play next song
-  const playNextSong = () => {
-    if (queue.length > 0) {
-      // Play from queue
-      const nextSong = queue[0];
-      const newQueue = queue.slice(1);
-      setQueue(newQueue);
-      playSong(nextSong);
-      return;
-    }
-    
-    // No songs in queue, use trending songs
-    if (!currentSong) return;
-    
-    // This function will be implemented in the component where trending songs are available
-  };
+  // Set up player events hook with the necessary callbacks
+  const events = usePlayerEvents({
+    setIsPlaying: controls.setIsPlaying,
+    startProgressTimer: progress.startProgressTimer,
+    stopProgressTimer: progress.stopProgressTimer,
+    handleSongEnd
+  });
   
-  // Play previous song
-  const playPreviousSong = () => {
-    if (!currentSong) return;
-    
-    // If current time > 3 seconds, restart song
-    if (playerRef.current && playerRef.current.getCurrentTime() > 3) {
-      playerRef.current.seekTo(0);
-      return;
-    }
-    
-    // This function will be implemented in the component where trending songs are available
-  };
-  
-  // Handle volume change
-  const handleVolumeChange = (value: number[]) => {
-    const newVolume = value[0];
-    setVolume(newVolume);
-    if (playerRef.current) {
-      playerRef.current.setVolume(newVolume);
-    }
-  };
-  
-  // Handle progress change (seek)
-  const handleProgressChange = (value: number[]) => {
-    const newProgress = value[0];
-    if (playerRef.current && duration) {
-      const seekTime = (newProgress / 100) * duration;
-      playerRef.current.seekTo(seekTime, true);
-      setProgress(newProgress);
-      setCurrentTime(seekTime);
-    }
-  };
-  
-  // Toggle shuffle
-  const toggleShuffle = () => {
-    setIsShuffleOn(!isShuffleOn);
-  };
-  
-  // Toggle repeat mode
-  const toggleRepeat = () => {
-    setRepeatMode((prevMode) => (prevMode + 1) % 3);
-  };
-  
-  // Add to queue
-  const addToQueue = (song: Song) => {
-    setQueue([...queue, song]);
-    
-    toast({
-      title: t('music.addedToQueue'),
-      description: `${song.title} - ${song.artist}`,
-    });
-  };
-  
-  // Toggle background play
-  const toggleBackgroundPlay = () => {
-    setIsBackgroundPlay(!isBackgroundPlay);
-    
-    if (!isBackgroundPlay) {
-      // Request notification permission for background play alerts
-      if ('Notification' in window && Notification.permission !== 'granted') {
-        Notification.requestPermission();
-      }
-      
-      toast({
-        title: t('music.backgroundPlayEnabled'),
-        description: t('music.playingInBackground'),
-      });
-    } else {
-      document.title = 'Snapsta'; // Reset title
-      
-      toast({
-        title: t('music.backgroundPlayDisabled'),
-      });
-    }
+  // Overridden playSong function to incorporate background play
+  const playSong = (song: Song) => {
+    controls.playSong(song);
+    backgroundPlay.updateBackgroundInfo(song);
   };
   
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (progressTimerRef.current) {
-        clearInterval(progressTimerRef.current);
-      }
+      progress.stopProgressTimer();
     };
-  }, []);
+  }, [progress]);
   
   return {
-    isPlaying,
-    currentSong,
-    queue,
-    volume,
-    progress,
-    duration,
-    currentTime,
-    isShuffleOn,
-    repeatMode,
-    isBackgroundPlay,
-    playerRef,
-    formatTime,
-    onPlayerReady,
-    onPlayerStateChange,
-    onPlayerError,
-    onProgressChange,
+    // Player state
+    isPlaying: controls.isPlaying,
+    currentSong: controls.currentSong,
+    queue: queueManager.queue,
+    volume: progress.volume,
+    progress: progress.progress,
+    duration: progress.duration,
+    currentTime: progress.currentTime,
+    isShuffleOn: controls.isShuffleOn,
+    repeatMode: controls.repeatMode,
+    isBackgroundPlay: backgroundPlay.isBackgroundPlay,
+    playerRef: controls.playerRef,
+    
+    // Methods
+    formatTime: progress.formatTime,
+    togglePlay: controls.togglePlay,
     playSong,
-    togglePlay,
-    playNextSong,
-    playPreviousSong,
-    handleVolumeChange,
-    handleProgressChange,
-    toggleShuffle,
-    toggleRepeat,
-    addToQueue,
-    toggleBackgroundPlay,
-    setQueue
+    playNextSong: () => {}, // This should be implemented in component where trending songs are available
+    playPreviousSong: () => {}, // This should be implemented in component where trending songs are available
+    handleVolumeChange: (value: number[]) => progress.handleVolumeChange(value, controls.playerRef.current),
+    handleProgressChange: (value: number[]) => progress.handleProgressChange(value, controls.playerRef.current),
+    toggleShuffle: controls.toggleShuffle,
+    toggleRepeat: controls.toggleRepeat,
+    addToQueue: queueManager.addToQueue,
+    toggleBackgroundPlay: backgroundPlay.toggleBackgroundPlay,
+    setQueue: queueManager.setQueue,
+    
+    // Player event handlers
+    onPlayerReady: () => events.onPlayerReady(controls.playerRef.current!, progress.volume),
+    onPlayerStateChange: (state: any) => events.onPlayerStateChange(state, controls.playerRef.current!),
+    onPlayerError: events.onPlayerError,
+    onProgressChange: (currentTime: number, duration: number) => progress.updateProgress(currentTime, duration)
   };
 }
