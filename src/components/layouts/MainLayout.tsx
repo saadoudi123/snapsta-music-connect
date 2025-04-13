@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -10,7 +9,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { MobileNav } from '@/components/navigation/MobileNav';
 import { DesktopNav } from '@/components/navigation/DesktopNav';
 import StoriesBar from '@/components/stories/StoriesBar';
-import MusicPlayer from '@/components/music/MusicPlayer';
 import BottomNav from '@/components/navigation/BottomNav';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -31,8 +29,8 @@ const MainLayout: React.FC = () => {
     const pathsWithoutStoriesBar = ['/messages', '/music', '/settings', '/notifications', '/search'];
     setShowStoriesBar(!pathsWithoutStoriesBar.some(path => location.pathname.startsWith(path)));
 
-    // Show music player only on certain pages
-    setShowMusicPlayer(location.pathname.startsWith('/music'));
+    // Show music player only on music pages and never on auth pages
+    setShowMusicPlayer(location.pathname.startsWith('/music') && !location.pathname.startsWith('/auth'));
   }, [location.pathname]);
 
   useEffect(() => {

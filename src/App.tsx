@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Suspense, useEffect } from "react";
@@ -27,6 +27,19 @@ import Music from "./pages/Music";
 
 // Component for MusicPlayer
 import MusicPlayer from "./components/music/MusicPlayer";
+
+// Conditional music player component
+const ConditionalMusicPlayer = () => {
+  const location = useLocation();
+  // Don't show music player on auth pages
+  const isAuthPage = location.pathname.startsWith('/auth');
+  
+  if (isAuthPage) {
+    return null;
+  }
+  
+  return <MusicPlayer />;
+};
 
 const queryClient = new QueryClient();
 
@@ -85,8 +98,8 @@ const App = () => {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 
-                {/* Music Player (Global component) */}
-                <MusicPlayer />
+                {/* Conditional Music Player (Global component) */}
+                <ConditionalMusicPlayer />
               </ThemeProvider>
             </AuthProvider>
           </BrowserRouter>

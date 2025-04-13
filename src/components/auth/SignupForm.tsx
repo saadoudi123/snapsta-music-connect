@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 
 import 'react-phone-number-input/style.css';
+import './phone-input.css';
 
 const SignupForm: React.FC = () => {
   const { t } = useTranslation();
@@ -30,7 +30,6 @@ const SignupForm: React.FC = () => {
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Email signup validation schema
   const emailSchema = z.object({
     email: z.string().email(t('auth.errors.invalidEmail')),
     emailPassword: z.string().min(6, t('auth.errors.passwordLength')),
@@ -40,7 +39,6 @@ const SignupForm: React.FC = () => {
     path: ['emailConfirmPassword'],
   });
 
-  // Phone signup validation schema
   const phoneSchema = z.object({
     phone: z.string().min(8, t('auth.errors.invalidPhone')),
     phonePassword: z.string().min(6, t('auth.errors.passwordLength')),
@@ -50,7 +48,6 @@ const SignupForm: React.FC = () => {
     path: ['phoneConfirmPassword'],
   });
 
-  // Form for email signup
   const emailForm = useForm<z.infer<typeof emailSchema>>({
     resolver: zodResolver(emailSchema),
     defaultValues: {
@@ -60,7 +57,6 @@ const SignupForm: React.FC = () => {
     },
   });
 
-  // Form for phone signup
   const phoneForm = useForm<z.infer<typeof phoneSchema>>({
     resolver: zodResolver(phoneSchema),
     defaultValues: {
@@ -70,7 +66,6 @@ const SignupForm: React.FC = () => {
     },
   });
 
-  // Submit handlers
   const onEmailSubmit = async (values: z.infer<typeof emailSchema>) => {
     await signUpWithEmail(values.email, values.emailPassword);
   };
@@ -100,7 +95,6 @@ const SignupForm: React.FC = () => {
           <TabsTrigger value="phone">{t('auth.phone')}</TabsTrigger>
         </TabsList>
 
-        {/* Email Tab */}
         <TabsContent value="email" className="space-y-4">
           <Form {...emailForm}>
             <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
@@ -186,7 +180,6 @@ const SignupForm: React.FC = () => {
           </Form>
         </TabsContent>
 
-        {/* Phone Tab */}
         <TabsContent value="phone" className="space-y-4">
           <Form {...phoneForm}>
             <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-4">
@@ -202,7 +195,7 @@ const SignupForm: React.FC = () => {
                         placeholder={t('auth.enterPhone')}
                         value={field.value}
                         onChange={field.onChange}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="phone-input-container flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       />
                     </FormControl>
                     <FormMessage />
