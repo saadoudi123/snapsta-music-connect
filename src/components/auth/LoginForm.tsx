@@ -25,7 +25,7 @@ const LoginForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { login, loading } = useAuth();
+  const { signInWithEmail, loading } = useAuth();
 
   const loginSchema = z.object({
     email: z.string().email(t('auth.errors.invalidEmail')),
@@ -42,7 +42,7 @@ const LoginForm: React.FC = () => {
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
     try {
-      await login(values.email, values.password);
+      await signInWithEmail(values.email, values.password);
       toast({
         title: t('auth.loginSuccess'),
         description: t('auth.welcomeBack'),
@@ -159,4 +159,3 @@ const LoginForm: React.FC = () => {
 };
 
 export default LoginForm;
-
