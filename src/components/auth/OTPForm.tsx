@@ -1,31 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import PhoneInput from 'react-phone-number-input';
-import { Check, X, RefreshCw, Clock } from 'lucide-react';
+import { RefreshCw, Clock } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
-import 'react-phone-number-input/style.css';
-import './phone-input.css';
+import EmailOtpForm from './otp/EmailOtpForm';
+import PhoneOtpForm from './otp/PhoneOtpForm';
+import OtpVerificationForm from './otp/OtpVerificationForm';
+import OtpLinks from './otp/OtpLinks';
 
 const OTPForm: React.FC = () => {
   const { t } = useTranslation();
@@ -48,13 +35,11 @@ const OTPForm: React.FC = () => {
     if (email) {
       setAuthMethod('email');
       setIdentifier(email);
-      emailRequestForm.setValue('email', email);
       setShowVerificationForm(true);
       requestOTP(email);
     } else if (phone) {
       setAuthMethod('phone');
       setIdentifier(phone);
-      phoneRequestForm.setValue('phone', phone);
       setShowVerificationForm(true);
       requestOTP(phone);
     }
@@ -68,43 +53,10 @@ const OTPForm: React.FC = () => {
     }
   }, [countdown]);
 
-  const requestEmailSchema = z.object({
-    email: z.string().email(t('auth.errors.invalidEmail')),
-  });
-
-  const requestPhoneSchema = z.object({
-    phone: z.string().min(8, t('auth.errors.invalidPhone')),
-  });
-
-  const verifySchema = z.object({
-    code: z.string().min(6, t('auth.errors.codeLength')),
-  });
-
-  const emailRequestForm = useForm<z.infer<typeof requestEmailSchema>>({
-    resolver: zodResolver(requestEmailSchema),
-    defaultValues: {
-      email: '',
-    },
-  });
-
-  const phoneRequestForm = useForm<z.infer<typeof requestPhoneSchema>>({
-    resolver: zodResolver(requestPhoneSchema),
-    defaultValues: {
-      phone: '',
-    },
-  });
-
-  const verifyForm = useForm<z.infer<typeof verifySchema>>({
-    resolver: zodResolver(verifySchema),
-    defaultValues: {
-      code: '',
-    },
-  });
-
-  const onEmailRequestSubmit = async (values: z.infer<typeof requestEmailSchema>) => {
+  const handleEmailSubmit = async (email: string) => {
     try {
-      await requestOTP(values.email);
-      setIdentifier(values.email);
+      await requestOTP(email);
+      setIdentifier(email);
       setShowVerificationForm(true);
       setCountdown(60); // Set 60 seconds countdown for resend button
       
@@ -121,10 +73,10 @@ const OTPForm: React.FC = () => {
     }
   };
 
-  const onPhoneRequestSubmit = async (values: z.infer<typeof requestPhoneSchema>) => {
+  const handlePhoneSubmit = async (phone: string) => {
     try {
-      await requestOTP(values.phone);
-      setIdentifier(values.phone);
+      await requestOTP(phone);
+      setIdentifier(phone);
       setShowVerificationForm(true);
       setCountdown(60); // Set 60 seconds countdown for resend button
       
@@ -141,10 +93,10 @@ const OTPForm: React.FC = () => {
     }
   };
 
-  const onVerifySubmit = async (values: z.infer<typeof verifySchema>) => {
+  const handleVerifySubmit = async (code: string) => {
     try {
       setVerificationStatus('idle');
-      await verifyOTP(identifier, values.code);
+      await verifyOTP(identifier, code);
       setVerificationStatus('success');
       
       // Show success message
@@ -211,168 +163,32 @@ const OTPForm: React.FC = () => {
           </TabsList>
 
           <TabsContent value="email" className="space-y-4">
-            <Form {...emailRequestForm}>
-              <form onSubmit={emailRequestForm.handleSubmit(onEmailRequestSubmit)} className="space-y-4">
-                <FormField
-                  control={emailRequestForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('auth.email')}</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder={t('auth.enterEmail')}
-                          type="email"
-                          autoComplete="email"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? t('common.loading') : t('auth.sendCode')}
-                </Button>
-              </form>
-            </Form>
+            <EmailOtpForm 
+              onFormSubmit={handleEmailSubmit} 
+              loading={loading} 
+            />
           </TabsContent>
 
           <TabsContent value="phone" className="space-y-4">
-            <Form {...phoneRequestForm}>
-              <form onSubmit={phoneRequestForm.handleSubmit(onPhoneRequestSubmit)} className="space-y-4">
-                <FormField
-                  control={phoneRequestForm.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('auth.phone')}</FormLabel>
-                      <FormControl>
-                        <PhoneInput
-                          international
-                          placeholder={t('auth.enterPhone')}
-                          value={field.value}
-                          onChange={field.onChange}
-                          className="phone-input-container flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? t('common.loading') : t('auth.sendCode')}
-                </Button>
-              </form>
-            </Form>
+            <PhoneOtpForm 
+              onFormSubmit={handlePhoneSubmit} 
+              loading={loading} 
+            />
           </TabsContent>
         </Tabs>
       ) : (
-        <div className="space-y-4">
-          <div className="text-center mb-4">
-            <p className="text-sm text-muted-foreground">
-              {t('auth.verificationSent')} {identifier}
-            </p>
-          </div>
-          
-          {verificationStatus === 'error' && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription className="flex items-center">
-                <X className="h-4 w-4 mr-2" />
-                {t('auth.errors.invalidCode')}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {verificationStatus === 'success' && (
-            <Alert className="mb-4 bg-green-500/10 text-green-500 border-green-500/20">
-              <AlertDescription className="flex items-center">
-                <Check className="h-4 w-4 mr-2" />
-                {t('auth.verificationSuccessful')}
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          <Form {...verifyForm}>
-            <form onSubmit={verifyForm.handleSubmit(onVerifySubmit)} className="space-y-4">
-              <FormField
-                control={verifyForm.control}
-                name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('auth.verificationCode')}</FormLabel>
-                    <FormControl>
-                      <InputOTP maxLength={6} {...field}>
-                        <InputOTPGroup>
-                          <InputOTPSlot index={0} />
-                          <InputOTPSlot index={1} />
-                          <InputOTPSlot index={2} />
-                          <InputOTPSlot index={3} />
-                          <InputOTPSlot index={4} />
-                          <InputOTPSlot index={5} />
-                        </InputOTPGroup>
-                      </InputOTP>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? t('common.loading') : t('auth.verifyCode')}
-              </Button>
-            </form>
-          </Form>
-
-          <div className="text-center">
-            <Button 
-              variant="link" 
-              onClick={handleResendOTP} 
-              disabled={loading || countdown > 0}
-              className="flex mx-auto items-center gap-2"
-            >
-              {countdown > 0 ? (
-                <>
-                  <Clock className="h-4 w-4" />
-                  {t('auth.resendCodeIn')} {countdown}s
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  {t('auth.resendCode')}
-                </>
-              )}
-            </Button>
-          </div>
-
-          <div className="text-center">
-            <Button variant="link" onClick={() => setShowVerificationForm(false)}>
-              {t('common.back')}
-            </Button>
-          </div>
-        </div>
+        <OtpVerificationForm
+          onVerify={handleVerifySubmit}
+          onBack={() => setShowVerificationForm(false)}
+          onResend={handleResendOTP}
+          identifier={identifier}
+          loading={loading}
+          countdown={countdown}
+          verificationStatus={verificationStatus}
+        />
       )}
 
-      <div className="text-center space-y-2">
-        <div>
-          <Link
-            to="/auth/login"
-            className="text-sm underline-offset-4 hover:underline text-primary"
-          >
-            {t('auth.login')}
-          </Link>
-        </div>
-        <div>
-          <Link
-            to="/auth/signup"
-            className="text-sm underline-offset-4 hover:underline text-primary"
-          >
-            {t('auth.signup')}
-          </Link>
-        </div>
-      </div>
+      <OtpLinks />
     </div>
   );
 };
