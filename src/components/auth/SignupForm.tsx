@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -19,6 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 import 'react-phone-number-input/style.css';
@@ -29,6 +30,8 @@ const SignupForm: React.FC = () => {
   const { signUpWithEmail, signUpWithPhone, loading } = useAuth();
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const emailSchema = z.object({
     email: z.string().email(t('auth.errors.invalidEmail')),
@@ -67,11 +70,29 @@ const SignupForm: React.FC = () => {
   });
 
   const onEmailSubmit = async (values: z.infer<typeof emailSchema>) => {
-    await signUpWithEmail(values.email, values.emailPassword);
+    try {
+      await signUpWithEmail(values.email, values.emailPassword);
+      navigate(`/auth/otp?email=${encodeURIComponent(values.email)}`);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t('errors.error'),
+        description: t('auth.errors.signupFailed'),
+      });
+    }
   };
 
   const onPhoneSubmit = async (values: z.infer<typeof phoneSchema>) => {
-    await signUpWithPhone(values.phone, values.phonePassword);
+    try {
+      await signUpWithPhone(values.phone, values.phonePassword);
+      navigate(`/auth/otp?phone=${encodeURIComponent(values.phone)}`);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t('errors.error'),
+        description: t('auth.errors.signupFailed'),
+      });
+    }
   };
 
   return (

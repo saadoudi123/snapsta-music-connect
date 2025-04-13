@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import PhoneInput from 'react-phone-number-input';
+import { Check, X, RefreshCw, Clock } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +18,10 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 import 'react-phone-number-input/style.css';
@@ -28,6 +33,40 @@ const OTPForm: React.FC = () => {
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
   const [showVerificationForm, setShowVerificationForm] = useState(false);
   const [identifier, setIdentifier] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'error' | 'success'>('idle');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+  
+  // Get email or phone from URL query params if available
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const email = searchParams.get('email');
+    const phone = searchParams.get('phone');
+    
+    if (email) {
+      setAuthMethod('email');
+      setIdentifier(email);
+      emailRequestForm.setValue('email', email);
+      setShowVerificationForm(true);
+      requestOTP(email);
+    } else if (phone) {
+      setAuthMethod('phone');
+      setIdentifier(phone);
+      phoneRequestForm.setValue('phone', phone);
+      setShowVerificationForm(true);
+      requestOTP(phone);
+    }
+  }, [location]);
+
+  // Handle countdown for resend code
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
   const requestEmailSchema = z.object({
     email: z.string().email(t('auth.errors.invalidEmail')),
@@ -38,7 +77,7 @@ const OTPForm: React.FC = () => {
   });
 
   const verifySchema = z.object({
-    code: z.string().min(6, t('auth.errors.codeRequired')),
+    code: z.string().min(6, t('auth.errors.codeLength')),
   });
 
   const emailRequestForm = useForm<z.infer<typeof requestEmailSchema>>({
@@ -63,23 +102,89 @@ const OTPForm: React.FC = () => {
   });
 
   const onEmailRequestSubmit = async (values: z.infer<typeof requestEmailSchema>) => {
-    await requestOTP(values.email);
-    setIdentifier(values.email);
-    setShowVerificationForm(true);
+    try {
+      await requestOTP(values.email);
+      setIdentifier(values.email);
+      setShowVerificationForm(true);
+      setCountdown(60); // Set 60 seconds countdown for resend button
+      
+      toast({
+        title: t('auth.verificationSent'),
+        description: t('auth.checkEmail'),
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t('errors.error'),
+        description: t('auth.errors.otpRequestFailed'),
+      });
+    }
   };
 
   const onPhoneRequestSubmit = async (values: z.infer<typeof requestPhoneSchema>) => {
-    await requestOTP(values.phone);
-    setIdentifier(values.phone);
-    setShowVerificationForm(true);
+    try {
+      await requestOTP(values.phone);
+      setIdentifier(values.phone);
+      setShowVerificationForm(true);
+      setCountdown(60); // Set 60 seconds countdown for resend button
+      
+      toast({
+        title: t('auth.verificationSent'),
+        description: t('auth.checkPhone'),
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t('errors.error'),
+        description: t('auth.errors.otpRequestFailed'),
+      });
+    }
   };
 
   const onVerifySubmit = async (values: z.infer<typeof verifySchema>) => {
-    await verifyOTP(identifier, values.code);
+    try {
+      setVerificationStatus('idle');
+      await verifyOTP(identifier, values.code);
+      setVerificationStatus('success');
+      
+      // Show success message
+      toast({
+        title: t('auth.verificationSuccessful'),
+        description: t('auth.redirectingToAccount'),
+      });
+      
+      // Redirect to main page after successful verification
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
+    } catch (error) {
+      setVerificationStatus('error');
+      toast({
+        variant: 'destructive',
+        title: t('errors.error'),
+        description: t('auth.errors.invalidCode'),
+      });
+    }
   };
 
   const handleResendOTP = async () => {
-    await requestOTP(identifier);
+    if (countdown > 0) return;
+    
+    try {
+      await requestOTP(identifier);
+      setCountdown(60);
+      
+      toast({
+        title: t('auth.codeSent'),
+        description: t('auth.newCodeSent'),
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t('errors.error'),
+        description: t('auth.errors.resendFailed'),
+      });
+    }
   };
 
   return (
@@ -172,6 +277,24 @@ const OTPForm: React.FC = () => {
             </p>
           </div>
           
+          {verificationStatus === 'error' && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription className="flex items-center">
+                <X className="h-4 w-4 mr-2" />
+                {t('auth.errors.invalidCode')}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {verificationStatus === 'success' && (
+            <Alert className="mb-4 bg-green-500/10 text-green-500 border-green-500/20">
+              <AlertDescription className="flex items-center">
+                <Check className="h-4 w-4 mr-2" />
+                {t('auth.verificationSuccessful')}
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <Form {...verifyForm}>
             <form onSubmit={verifyForm.handleSubmit(onVerifySubmit)} className="space-y-4">
               <FormField
@@ -181,12 +304,16 @@ const OTPForm: React.FC = () => {
                   <FormItem>
                     <FormLabel>{t('auth.verificationCode')}</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder={t('auth.enterCode')}
-                        type="text"
-                        autoComplete="one-time-code"
-                        {...field}
-                      />
+                      <InputOTP maxLength={6} {...field}>
+                        <InputOTPGroup>
+                          <InputOTPSlot index={0} />
+                          <InputOTPSlot index={1} />
+                          <InputOTPSlot index={2} />
+                          <InputOTPSlot index={3} />
+                          <InputOTPSlot index={4} />
+                          <InputOTPSlot index={5} />
+                        </InputOTPGroup>
+                      </InputOTP>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -200,8 +327,23 @@ const OTPForm: React.FC = () => {
           </Form>
 
           <div className="text-center">
-            <Button variant="link" onClick={handleResendOTP} disabled={loading}>
-              {t('auth.resendCode')}
+            <Button 
+              variant="link" 
+              onClick={handleResendOTP} 
+              disabled={loading || countdown > 0}
+              className="flex mx-auto items-center gap-2"
+            >
+              {countdown > 0 ? (
+                <>
+                  <Clock className="h-4 w-4" />
+                  {t('auth.resendCodeIn')} {countdown}s
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  {t('auth.resendCode')}
+                </>
+              )}
             </Button>
           </div>
 

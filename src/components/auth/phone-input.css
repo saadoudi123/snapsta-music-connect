@@ -42,8 +42,30 @@
   opacity: 1;
 }
 
+/* Fix for dropdown countries list in dark mode */
+.dark .PhoneInputCountrySelect {
+  color: white;
+}
+
+/* Fix for country select dropdown */
+.PhoneInputCountrySelect select {
+  color: inherit;
+  background-color: transparent;
+}
+
+.dark .PhoneInputCountrySelect select option {
+  background-color: hsl(var(--background));
+  color: white;
+}
+
 /* Ensure text is visible in all theme modes */
 .PhoneInputInput {
   flex: 1;
   min-width: 0;
+}
+
+/* Fix dropdown background in dark mode */
+.dark select option {
+  background-color: hsl(var(--background));
+  color: white;
 }

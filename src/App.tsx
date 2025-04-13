@@ -98,7 +98,7 @@ const App = () => {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 
-                {/* Conditional Music Player (Global component) */}
+                {/* The ConditionalMusicPlayer component will handle showing/hiding based on route */}
                 <ConditionalMusicPlayer />
               </ThemeProvider>
             </AuthProvider>
