@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import PhoneInput from 'react-phone-number-input';
-import { Eye, EyeOff } from 'lucide-react';
+import { Smartphone, Lock, EyeOff, Eye } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -72,13 +72,16 @@ const PhoneSignupForm = () => {
             <FormItem>
               <FormLabel>{t('auth.phone')}</FormLabel>
               <FormControl>
-                <PhoneInput
-                  international
-                  placeholder={t('auth.enterPhone')}
-                  value={field.value}
-                  onChange={field.onChange}
-                  className="phone-input-container flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                />
+                <div className="relative">
+                  <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <PhoneInput
+                    international
+                    placeholder={t('auth.enterPhone')}
+                    value={field.value}
+                    onChange={field.onChange}
+                    className="phone-input-container flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -93,10 +96,12 @@ const PhoneSignupForm = () => {
               <FormLabel>{t('auth.password')}</FormLabel>
               <FormControl>
                 <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder={t('auth.enterPassword')}
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="new-password"
+                    className="pl-10 pr-12"
                     {...field}
                   />
                   <Button
@@ -129,12 +134,16 @@ const PhoneSignupForm = () => {
             <FormItem>
               <FormLabel>{t('auth.confirmPassword')}</FormLabel>
               <FormControl>
-                <Input
-                  placeholder={t('auth.confirmPassword')}
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  {...field}
-                />
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder={t('auth.confirmPassword')}
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    className="pl-10"
+                    {...field}
+                  />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>

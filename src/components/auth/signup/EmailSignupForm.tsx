@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, EyeOff, Eye } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -68,12 +68,16 @@ const EmailSignupForm = () => {
             <FormItem>
               <FormLabel>{t('auth.email')}</FormLabel>
               <FormControl>
-                <Input
-                  placeholder={t('auth.enterEmail')}
-                  type="email"
-                  autoComplete="email"
-                  {...field}
-                />
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder={t('auth.enterEmail')}
+                    type="email"
+                    autoComplete="email"
+                    className="pl-10"
+                    {...field}
+                  />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -88,10 +92,12 @@ const EmailSignupForm = () => {
               <FormLabel>{t('auth.password')}</FormLabel>
               <FormControl>
                 <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder={t('auth.enterPassword')}
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="new-password"
+                    className="pl-10 pr-12"
                     {...field}
                   />
                   <Button
@@ -124,12 +130,16 @@ const EmailSignupForm = () => {
             <FormItem>
               <FormLabel>{t('auth.confirmPassword')}</FormLabel>
               <FormControl>
-                <Input
-                  placeholder={t('auth.confirmPassword')}
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  {...field}
-                />
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder={t('auth.confirmPassword')}
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    className="pl-10"
+                    {...field}
+                  />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
