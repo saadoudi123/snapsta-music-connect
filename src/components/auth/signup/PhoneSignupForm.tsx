@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +5,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import PhoneInput from 'react-phone-number-input';
-import { Smartphone, Lock, EyeOff, Eye } from 'lucide-react';
+import { Lock, EyeOff, Eye } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -73,13 +72,12 @@ const PhoneSignupForm = () => {
               <FormLabel>{t('auth.phone')}</FormLabel>
               <FormControl>
                 <div className="relative">
-                  <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <PhoneInput
                     international
                     placeholder={t('auth.enterPhone')}
                     value={field.value}
                     onChange={field.onChange}
-                    className="phone-input-container flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="phone-input-container flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
               </FormControl>
