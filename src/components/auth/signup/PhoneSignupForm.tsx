@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -72,15 +71,13 @@ const PhoneSignupForm = () => {
             <FormItem>
               <FormLabel>{t('auth.phone')}</FormLabel>
               <FormControl>
-                <div className="relative flex items-center">
-                  <PhoneInput
-                    international
-                    placeholder={t('auth.enterPhone')}
-                    value={field.value}
-                    onChange={field.onChange}
-                    className="phone-input-container flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </div>
+                <PhoneInput
+                  international
+                  placeholder={t('auth.enterPhone')}
+                  value={field.value}
+                  onChange={field.onChange}
+                  className="phone-input-container flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
