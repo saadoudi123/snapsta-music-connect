@@ -7,6 +7,7 @@ import { useDebounce } from 'use-debounce';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 // Define the allowed types
 type SearchResultType = "user" | "music" | "post" | "channel";
@@ -21,7 +22,12 @@ interface SearchResult {
   url: string;
 }
 
-const SearchBox = () => {
+// Define the props interface
+interface SearchBoxProps {
+  className?: string;
+}
+
+const SearchBox = ({ className }: SearchBoxProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -177,7 +183,7 @@ const SearchBox = () => {
   };
   
   return (
-    <div className="relative w-full max-w-md">
+    <div className={cn("relative w-full max-w-md", className)}>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
