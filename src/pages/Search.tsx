@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { SearchBox } from '@/components/search/SearchBox';
+import SearchBox from '@/components/search/SearchBox';  // Changed from { SearchBox } to default import
 
 const Search: React.FC = () => {
   const { t } = useTranslation();
