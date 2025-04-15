@@ -1,5 +1,5 @@
 
-import { SearchResult } from './types';
+import { SearchResult, SearchResultType } from './types';
 
 // Mock function to fetch search results
 export const fetchSearchResults = async (searchQuery: string): Promise<SearchResult[]> => {
@@ -15,7 +15,7 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
     mockResults.push(
       ...[{
         id: 'user1',
-        type: 'user',
+        type: 'user' as SearchResultType,
         title: 'John Doe',
         subtitle: '@johndoe',
         image: 'https://i.pravatar.cc/150?u=1',
@@ -23,7 +23,7 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
       },
       {
         id: 'user2',
-        type: 'user',
+        type: 'user' as SearchResultType,
         title: 'Jane Smith',
         subtitle: '@janesmith',
         image: 'https://i.pravatar.cc/150?u=2',
@@ -35,7 +35,7 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
     mockResults.push(
       ...[{
         id: 'music1',
-        type: 'music',
+        type: 'music' as SearchResultType,
         title: 'Shape of You',
         subtitle: 'Ed Sheeran',
         image: 'https://i.scdn.co/image/ab67616d0000b273ba5db46f4b838ef6027e6f96',
@@ -43,7 +43,7 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
       },
       {
         id: 'music2',
-        type: 'music',
+        type: 'music' as SearchResultType,
         title: 'Blinding Lights',
         subtitle: 'The Weeknd',
         image: 'https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36',
@@ -55,7 +55,7 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
     mockResults.push(
       ...[{
         id: 'channel1',
-        type: 'channel',
+        type: 'channel' as SearchResultType,
         title: '#music_lovers',
         subtitle: '3.2k members',
         image: '',
@@ -63,7 +63,7 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
       },
       {
         id: 'channel2',
-        type: 'channel',
+        type: 'channel' as SearchResultType,
         title: '#travel_adventures',
         subtitle: '1.5k members',
         image: '',
@@ -75,7 +75,7 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
     mockResults.push(
       ...[{
         id: 'post1',
-        type: 'post',
+        type: 'post' as SearchResultType,
         title: 'My Summer Holiday Photos',
         subtitle: 'Posted by @johndoe • 2 days ago',
         image: 'https://source.unsplash.com/random/300x200?summer',
@@ -83,7 +83,7 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
       },
       {
         id: 'post2',
-        type: 'post',
+        type: 'post' as SearchResultType,
         title: 'New Music Release Party',
         subtitle: 'Posted by @musiclover • 5 hours ago',
         image: 'https://source.unsplash.com/random/300x200?concert',

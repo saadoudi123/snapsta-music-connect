@@ -1,24 +1,20 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, X } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { SearchBoxProps, SearchResult } from './types';
 import SearchResults from './SearchResults';
+import SearchInput from './SearchInput';
 import { fetchSearchResults } from './searchService';
 
 const SearchBox = ({ className }: SearchBoxProps) => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [debouncedQuery] = useDebounce(query, 500);
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     if (debouncedQuery.length > 1) {
@@ -47,7 +43,6 @@ const SearchBox = ({ className }: SearchBoxProps) => {
     setQuery('');
     setIsOpen(false);
     setResults([]);
-    inputRef.current?.focus();
   };
   
   const handleResultClick = (result: SearchResult) => {
@@ -58,28 +53,11 @@ const SearchBox = ({ className }: SearchBoxProps) => {
   
   return (
     <div className={cn("relative w-full max-w-md", className)}>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          ref={inputRef}
-          type="text"
-          placeholder={t('search.placeholder')}
-          className="pl-9 pr-9"
-          value={query}
-          onChange={handleInputChange}
-          onFocus={() => {
-            if (query.length > 0) setIsOpen(true);
-          }}
-        />
-        {query.length > 0 && (
-          <button 
-            onClick={handleClear}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-accent"
-          >
-            <X className="h-4 w-4 text-muted-foreground" />
-          </button>
-        )}
-      </div>
+      <SearchInput 
+        query={query}
+        onQueryChange={handleInputChange}
+        onClear={handleClear}
+      />
       
       {isOpen && (
         <div className="absolute w-full mt-2 bg-background border rounded-md shadow-lg z-50">
