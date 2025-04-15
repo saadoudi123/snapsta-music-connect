@@ -24,6 +24,10 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Messages from "./pages/Messages";
 import Music from "./pages/Music";
+import Search from "./pages/Search";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+import Notifications from "./pages/Notifications";
 
 // Component for MusicPlayer
 import MusicPlayer from "./components/music/MusicPlayer";
@@ -91,7 +95,10 @@ const App = () => {
                     <Route index element={<Index />} />
                     <Route path="messages" element={<Messages />} />
                     <Route path="music" element={<Music />} />
-                    {/* Add other routes here */}
+                    <Route path="search" element={<Search />} />
+                    <Route path="profile" element={<Profile />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route path="notifications" element={<Notifications />} />
                   </Route>
 
                   {/* 404 Route */}
