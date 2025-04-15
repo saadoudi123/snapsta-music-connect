@@ -13,7 +13,7 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
   // Users
   if (searchQuery.length > 0) {
     mockResults.push(
-      ...[{
+      {
         id: 'user1',
         type: 'user' as SearchResultType,
         title: 'John Doe',
@@ -28,12 +28,12 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
         subtitle: '@janesmith',
         image: 'https://i.pravatar.cc/150?u=2',
         url: '/profile/janesmith'
-      }]
+      }
     );
     
     // Music
     mockResults.push(
-      ...[{
+      {
         id: 'music1',
         type: 'music' as SearchResultType,
         title: 'Shape of You',
@@ -48,12 +48,12 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
         subtitle: 'The Weeknd',
         image: 'https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36',
         url: '/music/blinding-lights'
-      }]
+      }
     );
     
     // Channels
     mockResults.push(
-      ...[{
+      {
         id: 'channel1',
         type: 'channel' as SearchResultType,
         title: '#music_lovers',
@@ -68,12 +68,12 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
         subtitle: '1.5k members',
         image: '',
         url: '/channels/travel_adventures'
-      }]
+      }
     );
     
     // Posts
     mockResults.push(
-      ...[{
+      {
         id: 'post1',
         type: 'post' as SearchResultType,
         title: 'My Summer Holiday Photos',
@@ -88,7 +88,7 @@ export const fetchSearchResults = async (searchQuery: string): Promise<SearchRes
         subtitle: 'Posted by @musiclover • 5 hours ago',
         image: 'https://source.unsplash.com/random/300x200?concert',
         url: '/posts/music-release'
-      }]
+      }
     );
   }
   
