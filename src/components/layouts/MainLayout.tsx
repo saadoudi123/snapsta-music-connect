@@ -16,6 +16,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import BrandLogo from '@/components/BrandLogo';
 import { useIsMobile } from '@/hooks/use-mobile';
 import MusicPlayer from '@/components/music/MusicPlayer';
+import { toast } from '@/hooks/use-toast';
 
 const MainLayout: React.FC = () => {
   const { user, loading } = useAuth();
@@ -36,14 +37,18 @@ const MainLayout: React.FC = () => {
   useEffect(() => {
     if (!loading && !user && !location.pathname.startsWith('/auth')) {
       navigate('/auth/login');
+      toast({
+        title: t('auth.sessionExpired'),
+        description: t('auth.pleaseLogin'),
+      });
     }
-  }, [user, loading, location.pathname, navigate]);
+  }, [user, loading, location.pathname, navigate, t]);
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-gradient-to-b from-background to-muted/20">
         <div className="animate-pulse flex flex-col items-center gap-4">
-          <BrandLogo size={64} />
+          <BrandLogo size={64} className="animate-bounce" />
           <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
@@ -55,7 +60,7 @@ const MainLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-background to-muted/20">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center">
           <div className="mr-4 hidden md:flex">
@@ -64,7 +69,7 @@ const MainLayout: React.FC = () => {
           
           <Sheet>
             <SheetTrigger asChild className="mr-2 md:hidden">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="hover:bg-primary/10 transition-colors">
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
@@ -90,7 +95,7 @@ const MainLayout: React.FC = () => {
       </header>
 
       {showStoriesBar && (
-        <div className="border-b py-2 px-4 overflow-x-auto scrollbar-none">
+        <div className="border-b py-2 px-4 overflow-x-auto scrollbar-none bg-background/30 backdrop-blur-sm">
           <StoriesBar />
         </div>
       )}
@@ -103,7 +108,7 @@ const MainLayout: React.FC = () => {
 
       {isMobile && <BottomNav />}
 
-      <footer className="border-t py-4 text-center text-xs text-muted-foreground">
+      <footer className="border-t py-4 text-center text-xs text-muted-foreground bg-background/50 backdrop-blur-sm">
         <p>{t('footer.copyright')}</p>
       </footer>
     </div>

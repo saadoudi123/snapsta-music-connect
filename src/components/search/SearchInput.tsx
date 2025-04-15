@@ -26,14 +26,15 @@ const SearchInput = ({ query, onQueryChange, onClear }: SearchInputProps) => {
         ref={inputRef}
         type="text"
         placeholder={t('search.placeholder')}
-        className="pl-9 pr-9"
+        className="pl-9 pr-9 bg-background border-muted focus:border-primary transition-colors duration-200 rounded-full"
         value={query}
         onChange={onQueryChange}
       />
       {query.length > 0 && (
         <button 
           onClick={handleClear}
-          className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-accent"
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-accent transition-colors duration-200"
+          aria-label={t('common.clear')}
         >
           <X className="h-4 w-4 text-muted-foreground" />
         </button>

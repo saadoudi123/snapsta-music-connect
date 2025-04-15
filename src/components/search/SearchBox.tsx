@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebounce } from 'use-debounce';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,7 @@ const SearchBox = ({ className }: SearchBoxProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     if (debouncedQuery.length > 1) {
@@ -29,6 +30,19 @@ const SearchBox = ({ className }: SearchBoxProps) => {
       setIsLoading(false);
     }
   }, [debouncedQuery]);
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
@@ -52,7 +66,7 @@ const SearchBox = ({ className }: SearchBoxProps) => {
   };
   
   return (
-    <div className={cn("relative w-full max-w-md", className)}>
+    <div ref={searchBoxRef} className={cn("relative w-full max-w-md", className)}>
       <SearchInput 
         query={query}
         onQueryChange={handleInputChange}
@@ -60,7 +74,7 @@ const SearchBox = ({ className }: SearchBoxProps) => {
       />
       
       {isOpen && (
-        <div className="absolute w-full mt-2 bg-background border rounded-md shadow-lg z-50">
+        <div className="absolute w-full mt-2 bg-background border rounded-lg shadow-lg z-50 animate-fade-in">
           <SearchResults 
             isLoading={isLoading}
             results={results}

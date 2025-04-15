@@ -60,10 +60,10 @@ const LoginForm: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
           {t('auth.login')}
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground">
           {t('auth.loginToAccount')}
         </p>
       </div>
@@ -81,7 +81,7 @@ const LoginForm: React.FC = () => {
                     placeholder={t('auth.enterEmail')}
                     type="email"
                     autoComplete="email"
-                    className="transition-all duration-300 focus:ring-2 focus:ring-primary/50"
+                    className="transition-all duration-300 focus:ring-2 focus:ring-primary/50 rounded-md"
                     {...field}
                   />
                 </FormControl>
@@ -102,7 +102,7 @@ const LoginForm: React.FC = () => {
                       placeholder={t('auth.enterPassword')}
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
-                      className="transition-all duration-300 focus:ring-2 focus:ring-primary/50 pr-10"
+                      className="transition-all duration-300 focus:ring-2 focus:ring-primary/50 pr-10 rounded-md"
                       {...field}
                     />
                     <Button
@@ -127,7 +127,7 @@ const LoginForm: React.FC = () => {
 
           <Button 
             type="submit" 
-            className="w-full group" 
+            className="w-full group bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 transition-all duration-300" 
             disabled={loading}
           >
             <LogIn className="mr-2 h-4 w-4 group-hover:animate-bounce" />
@@ -140,7 +140,7 @@ const LoginForm: React.FC = () => {
         <div>
           <Link
             to="/auth/forgot-password"
-            className="text-sm underline-offset-4 hover:underline text-primary"
+            className="text-sm underline-offset-4 hover:underline text-primary transition-colors"
           >
             {t('auth.forgotPassword')}
           </Link>
@@ -148,7 +148,7 @@ const LoginForm: React.FC = () => {
         <div>
           <Link
             to="/auth/signup"
-            className="text-sm underline-offset-4 hover:underline text-primary"
+            className="text-sm underline-offset-4 hover:underline text-primary transition-colors"
           >
             {t('auth.noAccount')}
           </Link>

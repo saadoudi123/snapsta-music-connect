@@ -22,8 +22,8 @@ const Music: React.FC = () => {
   
   return (
     <div className="container mx-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">{t('music.title')}</h1>
+      <div className="mb-6 bg-gradient-to-r from-primary/10 to-secondary/10 p-6 rounded-xl">
+        <h1 className="text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">{t('music.title')}</h1>
         <p className="text-muted-foreground">{t('music.subtitle')}</p>
       </div>
       
@@ -33,33 +33,33 @@ const Music: React.FC = () => {
           setSearchQuery={setSearchQuery} 
         />
         
-        <Tabs defaultValue="discover">
-          <TabsList className="mb-4">
-            <TabsTrigger value="discover">{t('music.discover')}</TabsTrigger>
-            <TabsTrigger value="playlists">{t('music.playlists')}</TabsTrigger>
-            <TabsTrigger value="recent">{t('music.recentlyPlayed')}</TabsTrigger>
-            <TabsTrigger value="favorites">{t('music.favorites')}</TabsTrigger>
+        <Tabs defaultValue="discover" className="mt-6">
+          <TabsList className="mb-4 bg-muted/50 p-1 rounded-full w-full sm:w-auto flex justify-between sm:justify-start">
+            <TabsTrigger value="discover" className="rounded-full data-[state=active]:bg-background">{t('music.discover')}</TabsTrigger>
+            <TabsTrigger value="playlists" className="rounded-full data-[state=active]:bg-background">{t('music.playlists')}</TabsTrigger>
+            <TabsTrigger value="recent" className="rounded-full data-[state=active]:bg-background">{t('music.recentlyPlayed')}</TabsTrigger>
+            <TabsTrigger value="favorites" className="rounded-full data-[state=active]:bg-background">{t('music.favorites')}</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="discover">
+          <TabsContent value="discover" className="animate-fade-in">
             <PopularTracks 
               tracks={popularTracks} 
               onPlayTrack={handlePlayTrack} 
             />
           </TabsContent>
           
-          <TabsContent value="playlists">
+          <TabsContent value="playlists" className="animate-fade-in">
             <PlaylistGrid playlists={playlists} />
           </TabsContent>
           
-          <TabsContent value="recent">
+          <TabsContent value="recent" className="animate-fade-in">
             <RecentlyPlayed 
               tracks={recentlyPlayed} 
               onPlayTrack={handlePlayTrack} 
             />
           </TabsContent>
           
-          <TabsContent value="favorites">
+          <TabsContent value="favorites" className="animate-fade-in">
             <FavoritesEmpty />
           </TabsContent>
         </Tabs>
