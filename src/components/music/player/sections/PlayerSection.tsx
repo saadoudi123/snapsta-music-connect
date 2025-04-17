@@ -29,6 +29,7 @@ interface PlayerProps {
   onProgressChange: (currentTime: number, duration: number) => void;
   playNextSong: () => void;
   playPreviousSong: () => void;
+  showDownloadDialog: (show: boolean) => void;
 }
 
 interface PlayerSectionProps {
@@ -75,7 +76,7 @@ const PlayerSection: React.FC<PlayerSectionProps> = ({ player, trendingSongs }) 
           currentSong={player.currentSong}
           isBackgroundPlay={player.isBackgroundPlay}
           toggleBackgroundPlay={player.toggleBackgroundPlay}
-          setShowDownloadDialog={(show) => {}}
+          setShowDownloadDialog={player.showDownloadDialog}
         />
       )}
     </>

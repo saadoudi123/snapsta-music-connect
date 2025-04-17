@@ -24,13 +24,14 @@ export function useYouTubePlayerManager() {
     download.setShowDownloadDialog(show);
   };
   
-  // Pass the download handler from ActionButtons to download dialog
-  player.showDownloadDialog = (show: boolean) => {
-    handleShowDownloadDialog(show);
+  // Add the download handler to the player object
+  const playerWithDownload = {
+    ...player,
+    showDownloadDialog: handleShowDownloadDialog
   };
   
   return {
-    player,
+    player: playerWithDownload,
     search,
     download,
     queue

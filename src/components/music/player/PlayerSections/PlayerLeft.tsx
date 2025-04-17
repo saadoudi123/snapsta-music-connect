@@ -29,6 +29,7 @@ interface PlayerLeftProps {
     onProgressChange: (currentTime: number, duration: number) => void;
     playNextSong: () => void;
     playPreviousSong: () => void;
+    showDownloadDialog: (show: boolean) => void;
   };
   download: {
     showDownloadDialog: boolean;
@@ -49,10 +50,7 @@ const PlayerLeft: React.FC<PlayerLeftProps> = ({ player, download }) => {
       />
       
       <PlayerSection
-        player={{
-          ...player,
-          showDownloadDialog: download.setShowDownloadDialog
-        }}
+        player={player}
         trendingSongs={[]}
       />
     </div>
