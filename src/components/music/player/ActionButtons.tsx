@@ -3,16 +3,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Heart, Download, Share, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  album: string;
-  duration: string;
-  thumbnail: string;
-  videoId?: string;
-}
+import { Song } from './types';
 
 interface ActionButtonsProps {
   currentSong: Song;
@@ -54,16 +45,18 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
           <Share className="h-4 w-4 mr-2" />
           {t('music.share')}
         </Button>
-        <Button variant="outline" size="sm" asChild>
-          <a 
-            href={`https://www.youtube.com/watch?v=${currentSong.videoId}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            {t('music.viewOnYouTube')}
-          </a>
-        </Button>
+        {currentSong.videoId && (
+          <Button variant="outline" size="sm" asChild>
+            <a 
+              href={`https://www.youtube.com/watch?v=${currentSong.videoId}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              {t('music.viewOnYouTube')}
+            </a>
+          </Button>
+        )}
       </div>
     </div>
   );

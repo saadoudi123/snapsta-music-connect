@@ -10,17 +10,20 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { Song } from './types';
 
 interface DownloadDialogProps {
   showDownloadDialog: boolean;
   setShowDownloadDialog: (show: boolean) => void;
   handleDownload: (format: 'mp3' | 'mp4') => void;
+  currentSong?: Song | null;
 }
 
 const DownloadDialog: React.FC<DownloadDialogProps> = ({
   showDownloadDialog,
   setShowDownloadDialog,
-  handleDownload
+  handleDownload,
+  currentSong
 }) => {
   const { t } = useTranslation();
 
@@ -30,7 +33,16 @@ const DownloadDialog: React.FC<DownloadDialogProps> = ({
         <SheetHeader>
           <SheetTitle>{t('music.download')}</SheetTitle>
           <SheetDescription>
-            {t('music.downloadInstructions')}
+            {currentSong ? (
+              <>
+                {t('music.downloadInstructions')}
+                <div className="mt-2 text-sm font-medium">
+                  {currentSong.title} - {currentSong.artist}
+                </div>
+              </>
+            ) : (
+              t('music.downloadInstructions')
+            )}
           </SheetDescription>
         </SheetHeader>
         <div className="py-4 space-y-4">

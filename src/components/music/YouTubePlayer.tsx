@@ -1,32 +1,40 @@
 
 import React from 'react';
-import { useYouTubePlayer } from './player/hooks/useYouTubePlayer';
-import { useYouTubeSearch } from './player/hooks/useYouTubeSearch';
-import { useYouTubeDownload } from './player/hooks/useYouTubeDownload';
-import PlayerLeft from './player/PlayerSections/PlayerLeft';
+import SearchSection from './player/sections/SearchSection';
+import PlayerSection from './player/sections/PlayerSection';
 import TabsSection from './player/TabsSection';
 import DownloadDialog from './player/DownloadDialog';
-
-import { trendingSongs, recentlyPlayed, allSongs } from './player/data/mockSongs';
+import { useYouTubePlayerManager } from './player/hooks/useYouTubePlayerManager';
 
 const YouTubePlayer: React.FC = () => {
-  const player = useYouTubePlayer();
-  const search = useYouTubeSearch(allSongs);
-  const download = useYouTubeDownload();
+  const { player, search, download, queue } = useYouTubePlayerManager();
   
   return (
     <div className="h-full">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-        <PlayerLeft player={player} download={download} />
+        <div className="lg:col-span-2 flex flex-col">
+          <SearchSection 
+            searchQuery={search.searchQuery}
+            setSearchQuery={search.setSearchQuery}
+            searchResults={search.searchResults}
+            handleSearch={search.handleSearch}
+            playSong={player.playSong}
+          />
+          
+          <PlayerSection 
+            player={player}
+            trendingSongs={queue.trendingSongs}
+          />
+        </div>
         
         <div className="lg:col-span-1 flex flex-col">
           <TabsSection
-            trendingSongs={trendingSongs}
-            recentlyPlayed={recentlyPlayed}
-            queue={player.queue}
+            trendingSongs={queue.trendingSongs}
+            recentlyPlayed={queue.recentlyPlayed}
+            queue={queue.queue}
             currentSong={player.currentSong}
             playSong={player.playSong}
-            addToQueue={player.addToQueue}
+            addToQueue={queue.addToQueue}
           />
         </div>
       </div>
