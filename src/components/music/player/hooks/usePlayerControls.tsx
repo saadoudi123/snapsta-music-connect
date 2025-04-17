@@ -38,7 +38,7 @@ export function usePlayerControls() {
     setIsPlaying(true);
   };
   
-  // Play next song
+  // Play next song - Refactored to avoid code duplication between hooks
   const playNextSong = () => {
     if (!currentSong) return;
     
@@ -55,7 +55,7 @@ export function usePlayerControls() {
     }
   };
 
-  // Play previous song
+  // Play previous song - Refactored to avoid code duplication between hooks
   const playPreviousSong = () => {
     if (!currentSong) return;
     
