@@ -61,7 +61,7 @@ export function useYouTubePlayerLifecycle({
     if (!playerRef.current) return;
     
     try {
-      // Set initial volume
+      // Set initial volume from persistent storage
       playerRef.current.setVolume(volume);
       
       // Start progress tracking

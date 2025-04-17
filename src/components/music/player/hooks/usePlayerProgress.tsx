@@ -1,12 +1,24 @@
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 export function usePlayerProgress() {
-  const [volume, setVolume] = useState(80);
+  // Load volume from localStorage or default to 80
+  const getInitialVolume = (): number => {
+    if (typeof window === 'undefined') return 80;
+    const savedVolume = localStorage.getItem('player-volume');
+    return savedVolume ? parseInt(savedVolume, 10) : 80;
+  };
+
+  const [volume, setVolume] = useState(getInitialVolume);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const progressTimerRef = useRef<number | null>(null);
+  
+  // Save volume to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('player-volume', volume.toString());
+  }, [volume]);
   
   // Format time (seconds to MM:SS)
   const formatTime = (seconds: number) => {
